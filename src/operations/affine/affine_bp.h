@@ -47,6 +47,22 @@ __global__ void reduce_row(const float* mat,
         atomicAdd(&res[row], sdata[threadIdx.y][0]);
 }
 
+/**
+ * @brief Computes the backward pass for an affine layer using GPU acceleration.
+ *
+ * Given input data, weight matrix, bias vector, and gradients of output data, this function
+ * computes gradients of input data, weight matrix, and bias vector for the backward pass of an
+ * affine layer in a neural network using GPU acceleration. The computation is performed using
+ * CUDA APIs for parallel reduction and matrix multiplication.
+ *
+ * @tparam DEV The device where the computation is performed (CPU or GPU).
+ * @param inp Input data matrix of shape (m, n), stored in row-major order.
+ * @param inp_grd Matrix to store gradients of input data of shape (m, n), stored in row-major order.
+ * @param wgt Weight matrix of shape (k, n), stored in row-major order.
+ * @param wgt_grd Matrix to store gradients of weight matrix of shape (k, n), stored in row-major order.
+ * @param bia_grd Vector to store gradients of bias vector of shape (k), stored in row-major order.
+ * @param out_grd Gradients of output data matrix of shape (m, k), stored in row-major order.
+ */
 // clang-format off
 template<data::Device DEV>
 inline void affine_bp(const data::DenseMatrix<float>& inp,
@@ -56,7 +72,6 @@ inline void affine_bp(const data::DenseMatrix<float>& inp,
                             data::DenseMatrix<float>& bia_grd,
                       const data::DenseMatrix<float>& out_grd) {
     // clang-format on
-
     if(!data::is_gpu(DEV))
         ERROR(false);
 

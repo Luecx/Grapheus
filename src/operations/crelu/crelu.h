@@ -79,12 +79,12 @@ inline void crelu(const data::DenseMatrix<float> &A,
             constexpr int block_size = 512;
 
             dim3 block(block_size);
-            dim3 grid (std::ceil((float)A.size() / block_size));
+            dim3 grid (std::ceil((float)(A.m * A.n) / block_size));
             crelu_kernel_fast<<<grid, block>>>(
                 A    .first<DEV>(),
                 B    .first<DEV>(),
                 max,
-                A.size());
+                (A.m * A.n));
         }
     }else{
         crelu_host(

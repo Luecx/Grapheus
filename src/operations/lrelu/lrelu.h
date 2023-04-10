@@ -74,11 +74,11 @@ inline void lrelu(const data::DenseMatrix<float> &A,
             // 1d-indexing
             constexpr int block_size = 512;
             dim3 block(block_size);
-            dim3 grid (std::ceil((float)A.size() / block_size));
+            dim3 grid (std::ceil((float)(A.m * A.n) / block_size));
             lrelu_kernel_fast<<<grid, block>>>(
                 A.first<DEV>(),
                 B.first<DEV>(),
-                A.size());
+                (A.m * A.n));
         }
     }else{
         lrelu_host(

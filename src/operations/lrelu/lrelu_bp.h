@@ -87,12 +87,12 @@ inline void lrelu_bp(const data::DenseMatrix<float> &A,
             constexpr int block_size = 512;
 
             dim3          block(block_size);
-            dim3          grid(std::ceil((float) A.size() / block_size));
+            dim3          grid(std::ceil((float) (A.m * A.n) / block_size));
             lrelu_bp_kernel_fast<<<grid, block>>>(A.first<DEV>(),
                                                   A_grd.first<DEV>(),
                                                   B.first<DEV>(),
                                                   B_grd.first<DEV>(),
-                                                  A.size());
+                                                  (A.m * A.n));
         }
     } else {
         lrelu_bp_host(A.first<DEV>(),

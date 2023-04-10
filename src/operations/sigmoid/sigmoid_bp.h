@@ -75,8 +75,7 @@ inline void sigmoid_bp(const data::DenseMatrix<float> &A,
             };
 
             dim3 block(block_size_x, block_size_y);
-            dim3 grid(std::ceil((float) A.n / block_size_x),
-                      std::ceil((float) A.m / block_size_y));
+            dim3 grid(std::ceil((float) A.n / block_size_x), std::ceil((float) A.m / block_size_y));
             sigmoid_bp_kernel<<<grid, block>>>(A.first<DEV>(),
                                                A_grd.first<DEV>(),
                                                B.first<DEV>(),
@@ -93,13 +92,13 @@ inline void sigmoid_bp(const data::DenseMatrix<float> &A,
             constexpr int block_size = 512;
 
             dim3          block(block_size);
-            dim3          grid(std::ceil((float) A.size() / block_size));
+            dim3          grid(std::ceil((float) (A.m * A.n) / block_size));
             sigmoid_bp_kernel_fast<<<grid, block>>>(A.first<DEV>(),
                                                     A_grd.first<DEV>(),
                                                     B.first<DEV>(),
                                                     B_grd.first<DEV>(),
                                                     scalar,
-                                                    A.size());
+                                                    (A.m * A.n));
         }
     } else {
         sigmoid_bp_host(A.first<DEV>(),
