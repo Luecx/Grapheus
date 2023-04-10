@@ -21,7 +21,6 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++17 ")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -use_fast_math")
 # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -dlto")
 
-
 # target_compile_options(Grapheus PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--std=c++17>)
 
 target_link_libraries(Grapheus ${CUDA_LIBRARIES})

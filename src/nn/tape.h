@@ -7,8 +7,8 @@ struct Tape {
     data::DenseMatrix<float> gradients;
 
     Tape(size_t m, size_t n)
-        : values(data::DenseMatrix {m, n})
-        , gradients(data::DenseMatrix {m, n}) {};
+        : values{m, n}
+        , gradients{m, n} {};
 
     Tape(const Tape& other, size_t m, size_t n, size_t offset_m = 0, size_t offset_n = 0)
         : values(other.values, m, n, offset_m, offset_n)
