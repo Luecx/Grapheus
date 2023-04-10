@@ -1,10 +1,10 @@
 #pragma once
 namespace data {
 struct SparseMatrix : public data::Matrix {
-    uint32_t             max_entries_per_column;
+    size_t               max_entries_per_column;
     data::SArray<size_t> values {0};
 
-    SparseMatrix(uint32_t m, uint32_t n, uint32_t max_entries_per_column)
+    SparseMatrix(size_t m, size_t n, size_t max_entries_per_column)
         : Matrix(m, n)
         , max_entries_per_column(max_entries_per_column) {
         values = data::SArray<size_t> {n * (1 + max_entries_per_column)};
@@ -57,4 +57,3 @@ struct SparseMatrix : public data::Matrix {
 };
 
 }    // namespace data
-

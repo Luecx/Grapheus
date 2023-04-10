@@ -32,43 +32,46 @@ __global__ void affine_sparse_kernel(
  */
 template<data::Device DEV>
 inline void affine_sparse(
-    data::DenseMatrix<float>& mat,
+    data::DenseMatrix<float>& wgt,
     data::SparseMatrix      & inp,
     data::DenseMatrix<float>& bia,
     data::DenseMatrix<float>& res){
 
-    auto M = mat.m;
+    auto M = wgt.m;
     auto B = inp.n;
 
     ASSERT(bia.m == M)
     ASSERT(bia.n == 1)
-    ASSERT(inp.m == N)
     ASSERT(res.m == M)
     ASSERT(res.n == B)
 
+    ERROR(inp.max_entries_per_column < 128);
+
+    ASSERT(mat.first<DEV>())
+    ASSERT(inp.values.address<DEV>())
+    ASSERT(bia.first<DEV>())
+    ASSERT(res.first<DEV>())
+
+
     if(data::is_gpu(DEV)){
 
-        ASSERT(mat.gpuAddress())
-        ASSERT(inp.column_indices.gpuAddress())
-        ASSERT(bia.gpuAddress())
-        ASSERT(res.gpuAddress())
-
         constexpr int block_size_x = 1;
-        constexpr int block_size_y = 256;
+        constexpr int block_size_y = 128;
 
         dim3 block(block_size_x, block_size_y);
         dim3 grid (std::ceil((float)res.n / block_size_x),
                    std::ceil((float)res.m / block_size_y));
 
         affine_sparse_kernel<<<grid, block>>>(
-            mat.first<DEV>(),
+            wgt.first<DEV>(),
             inp.values.address<DEV>(),
             inp.max_entries_per_column,
             bia.first<DEV>(),
             res.first<DEV>(),
             M,B,
-            mat.ld,
+            wgt.ld,
             res.ld);
+
     }else{
         ASSERT(false)
     }
