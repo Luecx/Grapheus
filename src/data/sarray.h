@@ -26,7 +26,7 @@ class SArray : public Array<TYPE> {
     using CPtr         = std::shared_ptr<CPUArrayTYPE>;
     using GPtr         = std::shared_ptr<GPUArrayTYPE>;
 
-    protected:
+    public:
     CPtr cpu_values = nullptr;
     GPtr gpu_values = nullptr;
 
