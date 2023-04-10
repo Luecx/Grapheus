@@ -62,6 +62,8 @@ __global__ void reduce_row(const float* mat,
  * @param wgt_grd Matrix to store gradients of weight matrix of shape (k, n), stored in row-major order.
  * @param bia_grd Vector to store gradients of bias vector of shape (k), stored in row-major order.
  * @param out_grd Gradients of output data matrix of shape (m, k), stored in row-major order.
+ *
+ * @note Currently only GPU as device is supported
  */
 // clang-format off
 template<data::Device DEV>
