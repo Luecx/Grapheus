@@ -21,6 +21,8 @@
 #include "affine/affine.h"
 #include "affine_batched/affine_batched.h"
 #include "affine_batched/affine_batched_bp.h"
+#include "affine_sparse/affine_sparse.h"
+//#include "affine_sparse/affine_sparse_bp.h"
 
 
 

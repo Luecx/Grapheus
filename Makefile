@@ -4,8 +4,8 @@
 # Compiler options
 NVCC = nvcc
 CXX = g++
-CXXFLAGS = -std=c++17 -fopenmp
-NVCCFLAGS = -use_fast_math -std=c++17 -O3 -DNDEBUG
+CXXFLAGS = -std=c++17 -fopenmp -stdlib=libc++
+NVCCFLAGS = -use_fast_math -O3 -DNDEBUG --compiler-options -std=c++17
 
 # Libraries
 LIBS = -lcublas

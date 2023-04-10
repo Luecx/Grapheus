@@ -1,12 +1,10 @@
-//
-// Created by Luecx on 18.03.2023.
-//
 
 #pragma once
-#include "../data/matrix_dense.h"
 
+#include "../data/matrix_dense.h"
 #include <random>
-namespace random{
+
+namespace math{
 
 extern std::mt19937 twister;
 

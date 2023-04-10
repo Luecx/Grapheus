@@ -45,7 +45,7 @@ struct DenseMatrix : public SArray<TYPE>, Matrix {
     using SArray<TYPE>::operator[];
 
     // printing
-    template<typename TYPE>
+    template<typename TYPE_>
     friend std::ostream& operator<<(std::ostream& os, const DenseMatrix<TYPE>& data);
 
     // basic element wise operators
@@ -161,9 +161,9 @@ TYPE* DenseMatrix<TYPE>::first() const {
     static_assert(DEV != NONE);
     if (this->template is_allocated<DEV>()) {
         if constexpr (DEV == CPU) {
-            return cpu_values->m_data + offset;
+            return this->cpu_values->m_data + offset;
         } else {
-            return gpu_values->m_data + offset;
+            return this->gpu_values->m_data + offset;
         }
     }
     return nullptr;
@@ -186,8 +186,8 @@ TYPE& DenseMatrix<TYPE>::operator()(int p_m, int p_n) {
     return get(p_m, p_n);
 }
 
-template<typename TYPE>
-std::ostream& operator<<(std::ostream& os, const DenseMatrix<TYPE>& data) {
+template<typename TYPE_>
+std::ostream& operator<<(std::ostream& os, const DenseMatrix<TYPE_>& data) {
 //    os << "size       : " << data.size() << "\n"
 //       << "CPU address: " << data.template address<CPU>() << " + " << data.offset << "\n"
 //       << "GPU address: " << data.template address<GPU>() << " + " << data.offset << "\n";

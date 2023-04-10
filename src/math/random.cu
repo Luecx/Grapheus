@@ -4,6 +4,6 @@
 
 #include "random.h"
 
-namespace random {
+namespace math {
 std::mt19937 twister {};
 }
