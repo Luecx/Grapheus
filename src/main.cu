@@ -21,41 +21,90 @@ using namespace data;
 int main() {
     init();
 
-    DenseInput inp{2048};
-    AffineMulti   affine_multi   {&inp            , 16    , 8};
-    ClippedRelu   c1             {&affine_multi};
-    AffineBatched affine_batched1{&c1             , 32 * 8, 8};
-    AffineBatched affine_batched3{&affine_batched1,      8, 8};
+    Tape inp{6, 4};
+    Tape out{2, 4};
+    Tape idx{1, 4};
 
-    inp.compile(16384);
-    c1.compile(16384);
-    affine_multi.compile(16384);
-    affine_batched1.compile(16384);
-    affine_batched3.compile(16384);
+    inp.malloc();
+    out.malloc();
+    idx.malloc();
 
-    Timer t{};
-    t.start();
+    math::normal(inp.values, 0.f, 1.0f);
+    math::normal(inp.gradients, 0.f, 1.0f);
+    math::normal(out.gradients, 0.f, 1.0f);
+    math::uniform(idx.values, 0.f, 2.f);
 
-    for(int i = 0; i < 100; i++){
-        affine_multi.forward();
-        c1.forward();
-        affine_batched1.forward();
-        affine_batched3.forward();
+    idx.values = math::round(idx.values);
+    idx.values >> GPU;
+    inp.gradients >> GPU;
+    out.gradients >> GPU;
 
-        affine_batched3.backward();
-        affine_batched1.backward();
-        c1.backward();
-        affine_multi.backward();
-    }
+//    operations::select_single<CPU>(inp.values, out.values, idx.values);
+    operations::select_single_bp<GPU>(inp.gradients, out.gradients, idx.values);
 
-    affine_batched3.dense_output.values >> CPU;
-    t.stop();
+    inp.gradients >> CPU;
+    out.gradients >> CPU;
 
-    std::cout << "estimated speed: "<< std::fixed << (int)(1e5 * 16384 / t.elapsed()) << "n/s" << std::endl;
-    std::cout << t.elapsed() << std::endl;
-
-
-
+    std::cout << idx.values << std::endl;
+    std::cout << inp.gradients << std::endl;
+    std::cout << out.gradients << std::endl;
+//
+//    DenseInput i1{4};
+//    DenseInput i2{5};
+//    Merge m{&i1,&i2};
+//
+//    size_t B = 16384;
+//    size_t I = 40200;
+//    size_t O = 512;
+//
+//    size_t E = 40;
+//
+//    SparseMatrix mat{I, B, E*3};
+//    DenseMatrix<float> wgt{O, I};
+//    DenseMatrix<float> bias{O,1};
+//    DenseMatrix<float> output{O, B};
+//
+//    DenseMatrix<float> rand_counts{B,1};
+//    rand_counts.malloc<CPU>();
+//    math::normal(rand_counts, (float)E, 0.1f);
+//
+//    mat.malloc();
+//    wgt.malloc<BOTH>();
+//    bias.malloc<BOTH>();
+//    output.malloc<BOTH>();
+//
+//    for(int i = 0; i < O; i++){
+//        for(int j = 0; j < I; j++){
+//            wgt(i,j) = i + j;
+//        }
+//    }
+//
+//    for(int i = 0; i <  B; i++){
+//        for(int j = 0; j < rand_counts(i,0); j++){
+//            mat.set(i,rand() % I);
+//        }
+//    }
+//
+//    wgt >> GPU;
+//    mat.values >> GPU;
+//
+//    Timer t{};
+//    t.start();
+//
+//    for(int i = 0; i < 100; i++){
+//        operations::affine_sparse<data::GPU>(wgt, mat, bias, output);
+//    }
+//
+//    output >> CPU;
+//    t.stop();
+//
+//    //    std::cout << wgt << std::endl;
+//    //    std::cout << mat << std::endl;
+//    //    std::cout << output << std::endl;
+//
+//    std::cout << "estimated speed: " << std::setprecision(4) << (1638.40f / t.elapsed())
+//              << " Mn/s" << std::endl;
+//    std::cout << t.elapsed() << std::endl;
 
     close();
 }

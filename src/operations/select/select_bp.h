@@ -71,7 +71,7 @@ void select_bp(      data::SArray     <float*>& inputs,
                const data::DenseMatrix<float >& output,
                const data::SArray     <float >& indices) {
     // clang-format on
-    if constexpr (data::is_cpu(DEV)) {
+    if constexpr (data::is_gpu(DEV)) {
         // a block has 128 x 1 threads
         dim3 block(128, 1);
         // we need to spawn N threads in the y for N outputs

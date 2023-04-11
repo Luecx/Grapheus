@@ -7,6 +7,8 @@
 #include "distribute/distribute_bp.h"
 #include "select/select.h"
 #include "select/select_bp.h"
+#include "select_single/select_single.h"
+#include "select_single/select_single_bp.h"
 
 #include "relu/relu_bp.h"
 #include "relu/relu.h"

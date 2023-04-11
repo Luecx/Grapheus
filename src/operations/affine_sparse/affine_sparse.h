@@ -47,7 +47,7 @@ inline void affine_sparse(
 
     ERROR(inp.max_entries_per_column < 128);
 
-    ASSERT(mat.first<DEV>())
+    ASSERT(wgt.first<DEV>())
     ASSERT(inp.values.address<DEV>())
     ASSERT(bia.first<DEV>())
     ASSERT(res.first<DEV>())

@@ -10,6 +10,7 @@
 #include "affine_multi.h"
 #include "distribute.h"
 #include "select.h"
+#include "select_single.h"
 #include "input.h"
 #include "merge.h"
 #include "split.h"
