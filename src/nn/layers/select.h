@@ -21,6 +21,10 @@ struct Select : Layer {
         , input_pointers(prev.size())
         , gradient_pointers(prev.size()) {
 
+        for(Layer* l:prev){
+            l->use();
+        }
+
         this->input_pointers.malloc<data::BOTH>();
         this->gradient_pointers.malloc<data::BOTH>();
     }

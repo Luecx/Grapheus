@@ -3,11 +3,10 @@
 //
 
 #pragma once
-#include "../operations/operations.h"
+#include "../../operations/operations.h"
 #include "layer.h"
 
 namespace nn{
-
 // TODO: discuss how this should be done
 //
 //struct DistributeHead : public Layer{

@@ -31,13 +31,21 @@ __global__ void add_bias_kernel(const float* __restrict__ vec,
                                 int n,
                                 int ld_res) {
     // clang-format on
-
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int idy = blockIdx.y * blockDim.y + threadIdx.y;
+//
+//    __shared__ float bia_data[16];
+//    if(threadIdx.y < 16){
+//        bia_data[threadIdx.y] = vec[idy];
+//    }
+//    __syncthreads();
+//
+//    if (idx >= n || idy >= m)
+//        return;
+//    res[MATRIX_INDEX(ld_res, idy, idx)] += bia_data[threadIdx.y];
 
     if (idx >= n || idy >= m)
         return;
-
     res[MATRIX_INDEX(ld_res, idy, idx)] += vec[idy];
 }
 

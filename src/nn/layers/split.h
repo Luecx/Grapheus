@@ -20,13 +20,16 @@ struct SplitHead : public Layer {
     }
 };
 
+// TODO: more than 2 heads
 struct Split : public Layer {
     SplitHead heads[2];
 
     explicit Split(Layer* prev, size_t head_1_size)
         : Layer(prev->size)
         , heads {{SplitHead(prev, head_1_size, 0)},
-                 {SplitHead(prev, prev->size - head_1_size, head_1_size)}} {}
+                 {SplitHead(prev, prev->size - head_1_size, head_1_size)}} {
+        prev->use();
+    }
 
     SplitHead* operator[](size_t s) {
         return &heads[s];

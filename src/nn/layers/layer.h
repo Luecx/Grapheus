@@ -1,5 +1,5 @@
 #pragma once
-#include "../data/matrix_sparse.h"
+#include "../../data/matrix_sparse.h"
 #include "tape.h"
 namespace nn {
 
@@ -7,6 +7,7 @@ enum LayerOutputType : int { DENSE = 1, SPARSE = 2, DENSE_AND_SPARSE };
 
 struct Layer {
     size_t size;
+    size_t output_used_counter = 0; // count how many times this layer is used.
 
     explicit Layer(size_t size)
         : size(size) {}
@@ -41,6 +42,15 @@ struct Layer {
     // computation forward and backwards
     virtual void forward() {};
     virtual void backward() {};
+
+    // use and unuse functions for the layers
+    void use() {
+        output_used_counter++;
+        ERROR(output_used_counter <= 1);
+    }
+    void unused() {
+        output_used_counter--;
+    }
 };
 
 }    // namespace nn

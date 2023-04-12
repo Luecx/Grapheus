@@ -45,8 +45,6 @@ inline void affine_sparse(
     ASSERT(res.m == M)
     ASSERT(res.n == B)
 
-    ERROR(inp.max_entries_per_column < 128);
-
     ASSERT(wgt.first<DEV>())
     ASSERT(inp.values.address<DEV>())
     ASSERT(bia.first<DEV>())
@@ -54,9 +52,9 @@ inline void affine_sparse(
 
 
     if(data::is_gpu(DEV)){
-
+        // TODO tune
         constexpr int block_size_x = 1;
-        constexpr int block_size_y = 128;
+        constexpr int block_size_y = 64;
 
         dim3 block(block_size_x, block_size_y);
         dim3 grid (std::ceil((float)res.n / block_size_x),

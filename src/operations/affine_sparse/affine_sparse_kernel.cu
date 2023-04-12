@@ -16,7 +16,7 @@ __global__ void operations::affine_sparse_kernel(
     size_t col = blockIdx.x * blockDim.x + threadIdx.x;
     size_t row = blockIdx.y * blockDim.y + threadIdx.y;
 
-    __shared__ size_t s_col_id[128];
+    __shared__ size_t s_col_id[64];
     // copy column indices
     if (threadIdx.y <= inp_col_max_entries){
         // get the offset at which we look into our sparse input

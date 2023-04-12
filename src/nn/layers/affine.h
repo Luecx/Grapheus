@@ -1,7 +1,8 @@
 #pragma once
 
+#include "../../operations/operations.h"
+#include "../../math/random.h"
 #include "layer.h"
-#include "../operations/operations.h"
 
 namespace nn {
 
@@ -15,12 +16,16 @@ struct Affine : public nn::Layer {
 
     Affine(Layer* prev, size_t size)
         : Layer(size)
-        , prev(prev) {}
+        , prev(prev) {
+        prev->use();
+    }
 
     void compile(size_t batch_size) override {
         // TODO add randomization
         weights = Tape(size, prev->size);
         weights.malloc();
+        math::normal(weights.values, 0.f, 1.0f / std::sqrtf(prev->size));
+        weights.values >> data::GPU;
 
         // TODO add randomization
         bias = Tape(size, 1);
@@ -43,8 +48,8 @@ struct Affine : public nn::Layer {
             prev->dense_output.gradients,
             weights.values,
             weights.gradients,
-            bias.values,
-            dense_output.values);
+            bias.gradients,
+            dense_output.gradients);
     }
 };
 }    // namespace nn

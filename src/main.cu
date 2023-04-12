@@ -1,19 +1,7 @@
 
-#include "data/array.h"
-#include "data/device.h"
-#include "data/matrix.h"
-#include "data/matrix_dense.h"
-#include "data/sarray.h"
-#include "math/functions.h"
-#include "math/random.h"
-#include "misc/start.h"
 #include "misc/timer.h"
-#include "nn/layers.h"
-#include "nn/tape.h"
-#include "operations/function/function.h"
+#include "nn/nn.h"
 #include "operations/operations.h"
-
-#include <iostream>
 
 using namespace nn;
 using namespace data;
@@ -21,90 +9,64 @@ using namespace data;
 int main() {
     init();
 
-    Tape inp{6, 4};
-    Tape out{2, 4};
-    Tape idx{1, 4};
+    Model model{};
 
-    inp.malloc();
-    out.malloc();
-    idx.malloc();
 
-    math::normal(inp.values, 0.f, 1.0f);
-    math::normal(inp.gradients, 0.f, 1.0f);
-    math::normal(out.gradients, 0.f, 1.0f);
-    math::uniform(idx.values, 0.f, 2.f);
+    auto i1 = model.add<SparseInput>(12 * 64 * 16, 64);
+    auto i2 = model.add<SparseInput>(12 * 64 * 16, 64);
+    auto i3 = model.add<DenseInput>(1);
+    auto ft = model.add<FeatureTransformer>(i1, i2, 512);
+    auto rl = model.add<ReLU>(ft);
+    auto s1 = model.add<AffineMulti>(rl, 16, 8);
+    auto a1 = model.add<ReLU>(s1);
+    auto s2 = model.add<AffineBatched>(a1, 32 * 8, 8);
+    auto a2 = model.add<ReLU>(s2);
+    auto s3 = model.add<AffineBatched>(a2, 1 * 8, 8);
+    auto sl = model.add<SelectSingle>(s3, i3, 8);
+    auto a3 = model.add<Sigmoid>(sl, 2.5 / 400);
 
-    idx.values = math::round(idx.values);
-    idx.values >> GPU;
-    inp.gradients >> GPU;
-    out.gradients >> GPU;
+    model.set_loss(MSE {true});
+    model.set_lr_schedule(StepDecayLRSchedule{1,1,1});
+    model.add_optimizer(Adam({
+             {OptimizerEntry{&ft->weights}},
+             {OptimizerEntry{&ft->bias   }},
+             {OptimizerEntry{&s1->weights}},
+             {OptimizerEntry{&s1->bias   }},
+             {OptimizerEntry{&s2->weights}},
+             {OptimizerEntry{&s2->bias   }},
+             {OptimizerEntry{&s3->weights}},
+             {OptimizerEntry{&s3->bias   }},
+    }, 0.9, 0.999, 1e-7));
 
-//    operations::select_single<CPU>(inp.values, out.values, idx.values);
-    operations::select_single_bp<GPU>(inp.gradients, out.gradients, idx.values);
+    model.compile(16384);
 
-    inp.gradients >> CPU;
-    out.gradients >> CPU;
+    // setup input
+    for(int i = 0; i < 16384; i++){
+        int offset = 12 * 64 * (rand() % 16);
+        for(int j = 0; j < 10 + (rand() % 50); j++){
+            i1->sparse_output.set(i, (rand() % (12 * 64)) + offset);
+            i2->sparse_output.set(i, (rand() % (12 * 64)) + offset);
+        }
+    }
 
-    std::cout << idx.values << std::endl;
-    std::cout << inp.gradients << std::endl;
-    std::cout << out.gradients << std::endl;
-//
-//    DenseInput i1{4};
-//    DenseInput i2{5};
-//    Merge m{&i1,&i2};
-//
-//    size_t B = 16384;
-//    size_t I = 40200;
-//    size_t O = 512;
-//
-//    size_t E = 40;
-//
-//    SparseMatrix mat{I, B, E*3};
-//    DenseMatrix<float> wgt{O, I};
-//    DenseMatrix<float> bias{O,1};
-//    DenseMatrix<float> output{O, B};
-//
-//    DenseMatrix<float> rand_counts{B,1};
-//    rand_counts.malloc<CPU>();
-//    math::normal(rand_counts, (float)E, 0.1f);
-//
-//    mat.malloc();
-//    wgt.malloc<BOTH>();
-//    bias.malloc<BOTH>();
-//    output.malloc<BOTH>();
-//
-//    for(int i = 0; i < O; i++){
-//        for(int j = 0; j < I; j++){
-//            wgt(i,j) = i + j;
-//        }
-//    }
-//
-//    for(int i = 0; i <  B; i++){
-//        for(int j = 0; j < rand_counts(i,0); j++){
-//            mat.set(i,rand() % I);
-//        }
-//    }
-//
-//    wgt >> GPU;
-//    mat.values >> GPU;
-//
-//    Timer t{};
-//    t.start();
-//
-//    for(int i = 0; i < 100; i++){
-//        operations::affine_sparse<data::GPU>(wgt, mat, bias, output);
-//    }
-//
-//    output >> CPU;
-//    t.stop();
-//
-//    //    std::cout << wgt << std::endl;
-//    //    std::cout << mat << std::endl;
-//    //    std::cout << output << std::endl;
-//
-//    std::cout << "estimated speed: " << std::setprecision(4) << (1638.40f / t.elapsed())
-//              << " Mn/s" << std::endl;
-//    std::cout << t.elapsed() << std::endl;
+    DenseMatrix<float> target{a3->size,16384};
+    target.malloc<BOTH>();
+    math::uniform( target, 0.f, 1.f);
+    target >> GPU;
+
+    for(int k = 0; k < 10; k++){
+        Timer t{};
+        t.start();
+
+        for(int i = 0; i < 1000; i++){
+            model.batch(target);
+        }
+
+        t.stop();
+
+        std::cout << (int)(16384 * 1e6 / t.elapsed()) << std::endl;
+    }
+
 
     close();
 }

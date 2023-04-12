@@ -6,6 +6,7 @@
 #include "split.h"
 namespace nn {
 
+// TODO: allow more than 2 layers to merge (should be trivial)
 /**
  * merge layers which merges the inputs of two layers together. The layer cannot be used
  * after the usage a Split layer if no other layer is used in between.
@@ -19,7 +20,9 @@ struct Merge : public Layer {
     Merge(Layer* l1, Layer* l2)
         : Layer(l1->size + l2->size)
         , l1(l1)
-        , l2(l2) {}
+        , l2(l2) {
+        l1->use();
+        l2->use();}
 
     void compile(size_t batch_size) override {
         this->compile_suboutput(batch_size, Tape(size, batch_size));
@@ -28,7 +31,7 @@ struct Merge : public Layer {
     void compile_suboutput(size_t batch_size, const Tape& output) override {
         Layer::compile_suboutput(batch_size, output);
         this->l1->compile_suboutput(batch_size, Tape{this->dense_output, l1->size, batch_size, 0, 0});
-        this->l2->compile_suboutput(batch_size, Tape(this->dense_output, l1->size, batch_size, l1->size, 0));
+        this->l2->compile_suboutput(batch_size, Tape(this->dense_output, l2->size, batch_size, l1->size, 0));
         ERROR(!dynamic_cast<SplitHead*>(l1));
         ERROR(!dynamic_cast<SplitHead*>(l2));
     }

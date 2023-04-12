@@ -17,7 +17,8 @@ struct SelectSingle : Layer {
         , indices(indices)
         , choices(choices) {
 
-        ERROR(prev->size % choices);
+        prev->use();
+        ERROR(prev->size % choices == 0);
     }
 
     void compile(size_t batch_size) override {
@@ -25,13 +26,11 @@ struct SelectSingle : Layer {
     }
 
     void forward() override {
-        // CANNOT SWITCH TO CPU HERE BECAUSE OUTPUT_POINTERS ONLY HAS GPU VALUES!
         operations::select_single<data::GPU>(prev->dense_output.values,
                                              dense_output.values,
                                              indices->dense_output.values);
     }
     void backward() override {
-        // CANNOT SWITCH TO CPU HERE BECAUSE OUTPUT_POINTERS ONLY HAS GPU VALUES!
         operations::select_single_bp<data::GPU>(prev->dense_output.gradients,
                                                 dense_output.gradients,
                                                 indices->dense_output.gradients);

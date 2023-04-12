@@ -1,5 +1,5 @@
 #pragma once
-#include "../data/matrix_dense.h"
+#include "../../data/matrix_dense.h"
 
 namespace nn {
 struct Tape {

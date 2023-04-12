@@ -1,4 +1,8 @@
 #pragma once
+#include "device.h"
+#include "matrix.h"
+#include <iostream>
+
 namespace data {
 struct SparseMatrix : public data::Matrix {
     size_t               max_entries_per_column;
@@ -12,6 +16,7 @@ struct SparseMatrix : public data::Matrix {
 
     void set(int input_idx, int index) {
         auto offset = (max_entries_per_column + 1) * input_idx;
+        ASSERT(values.address<data::CPU>());
         ASSERT(values.address<data::CPU>()[offset] <= max_entries_per_column);
         values[offset]++;
         values[offset + values[offset]] = index;

@@ -15,5 +15,7 @@
 #include "merge.h"
 #include "split.h"
 #include "activation.h"
+#include "weighted_sum.h"
+#include "feature_transformer.h"
 
 #endif    // CUDATEST_LAYERS_H

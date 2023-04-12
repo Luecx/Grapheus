@@ -3,6 +3,9 @@
 //
 
 #pragma once
+
+#include "../../data/matrix_dense.h"
+
 namespace operations {
 
 // clang-format off

@@ -24,7 +24,11 @@
 #include "affine_batched/affine_batched.h"
 #include "affine_batched/affine_batched_bp.h"
 #include "affine_sparse/affine_sparse.h"
-//#include "affine_sparse/affine_sparse_bp.h"
+#include "affine_sparse/affine_sparse_bp.h"
 
+#include "ax_p_by/ax_p_by.h"
+#include "ax_p_by/ax_p_by_bp.h"
 
+#include "mean_power_error/mpe.h"
 
+#include "adam/adam.h"

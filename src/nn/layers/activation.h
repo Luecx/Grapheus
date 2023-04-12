@@ -7,7 +7,9 @@ struct ReLU : public Layer {
     Layer* prev;
     ReLU(Layer* prev)
         : Layer(prev->size)
-        , prev(prev) {}
+        , prev(prev) {
+        prev->use();
+    }
 
     void compile(size_t batch_size) override {
         this->compile_suboutput(batch_size, Tape {size, batch_size});
@@ -32,7 +34,9 @@ struct Sigmoid : public Layer {
     explicit Sigmoid(Layer* prev, float scalar = 1)
         : Layer(prev->size)
         , prev(prev)
-        , scalar(scalar) {}
+        , scalar(scalar) {
+        prev->use();
+    }
 
     void compile(size_t batch_size) override {
         this->compile_suboutput(batch_size, Tape {size, batch_size});
@@ -58,7 +62,9 @@ struct ClippedRelu : public Layer {
     explicit ClippedRelu(Layer* prev, float max = 1)
         : Layer(prev->size)
         , prev(prev)
-        , max(max) {}
+        , max(max) {
+        prev->use();
+    }
 
     void compile(size_t batch_size) override {
         this->compile_suboutput(batch_size, Tape {size, batch_size});
@@ -82,7 +88,9 @@ struct LeakyReLU : public Layer {
     Layer* prev;
     explicit LeakyReLU(Layer* prev)
         : Layer(prev->size)
-        , prev(prev) {}
+        , prev(prev) {
+        prev->use();
+    }
 
     void compile(size_t batch_size) override {
         this->compile_suboutput(batch_size, Tape {size, batch_size});

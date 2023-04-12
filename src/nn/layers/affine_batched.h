@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../operations/operations.h"
+#include "../../operations/operations.h"
 #include "layer.h"
 
 struct AffineBatched : public nn::Layer {
@@ -15,6 +15,7 @@ struct AffineBatched : public nn::Layer {
         : Layer(size)
         , batches(batches)
         , prev(prev) {
+        prev->use();
         ERROR(prev->size % batches == 0);
         ERROR(size % batches == 0);
     }
