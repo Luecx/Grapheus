@@ -39,6 +39,7 @@ __global__ void adam_kernel(float* __restrict__ values,
 
     float delta        = alpha * first_moment[idm] / (sqrtf(second_moment[idm]) + eps);
     values[idv]        = max(m_min, min(m_max, values[idv] - delta));
+    gradients[idv]     = 0;
 }
 
 // clang-format off

@@ -13,32 +13,26 @@ __global__ void operations::affine_sparse_kernel(
 
     // clang-format on
     // compute which output value we are looking at
-    size_t col = blockIdx.x * blockDim.x + threadIdx.x;
-    size_t row = blockIdx.y * blockDim.y + threadIdx.y;
-
-    __shared__ size_t s_col_id[64];
-    // copy column indices
-    if (threadIdx.y <= inp_col_max_entries){
-        // get the offset at which we look into our sparse input
-        int offset = col * (inp_col_max_entries + 1);
-        // check how many values we are going to read
-        s_col_id[threadIdx.y] = inp_col_indices[offset + threadIdx.y];
-    }
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
 
     // skip out of bounds
     if (col >= n || row >= m)
         return;
 
-    __syncthreads();
+    // get the offset at which we look into our sparse input
+    int offset = col * (inp_col_max_entries + 1);
+    // check how many values we are going to read
+    int count = inp_col_indices[offset];
 
     // track the sum
     float sum = bia[row];
 
     // start at offset + 1 (offset contains the amount of values to read)
-    for (int i = 1; i < 1 + s_col_id[0]; i++) {
+    for (int i = offset + 1; i < offset + 1 + count; i++) {
 
         // get the sparse index (set row of the input)
-        auto b_row = s_col_id[i];
+        auto b_row = inp_col_indices[i];
         // get the corresponding weight
         auto wgt = mat[MATRIX_INDEX(lda, row, b_row)];
 
