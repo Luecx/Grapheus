@@ -3,6 +3,7 @@ project(Grapheus VERSION 1.0 LANGUAGES CUDA CXX)
 
 find_package(CUDA)
 find_package(Threads)
+
 set(CMAKE_CUDA_STANDARD 17)
 
 file(GLOB_RECURSE SRCS src/*.cu src/*.cpp src/*.h)
@@ -19,10 +20,11 @@ set_target_properties(Grapheus PROPERTIES
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler -openmp ")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++17 ")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -use_fast_math")
-# set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -dlto")
+#set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lcusparse")
 
 # target_compile_options(Grapheus PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--std=c++17>)
 
 target_link_libraries(Grapheus ${CUDA_LIBRARIES})
 target_link_libraries(Grapheus ${CUDA_CUBLAS_LIBRARIES})
+target_link_libraries(Grapheus ${CUDA_cusparse_LIBRARY})
 target_link_libraries(Grapheus ${CMAKE_THREAD_LIBS_INIT})
