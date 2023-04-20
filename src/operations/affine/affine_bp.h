@@ -15,7 +15,7 @@ __device__ void inline reduce_warp(volatile float* sdata, size_t tid) {
     sdata[tid] += sdata[tid + 1];
 }
 
-__global__ void inline reduce_row(const float* mat,
+__global__ inline void reduce_row(const float* mat,
                            float* res,
                            const int m,
                            const int n,

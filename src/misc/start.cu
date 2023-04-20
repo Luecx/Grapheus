@@ -5,6 +5,7 @@
 #include <iostream>
 
 cublasHandle_t CUBLAS_HANDLE;
+cusparseHandle_t CUSPARSE_HANDLE;
 
 
 void display_header() {
@@ -48,7 +49,11 @@ void display_header() {
 
 void init() {
     cublasCreate(&CUBLAS_HANDLE);
+    cusparseCreate(&CUSPARSE_HANDLE);
     display_header();
 }
 
-void close() { cublasDestroy(CUBLAS_HANDLE); }
+void close() {
+    cublasDestroy(CUBLAS_HANDLE);
+    cusparseDestroy(CUSPARSE_HANDLE);
+}

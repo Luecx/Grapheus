@@ -21,13 +21,12 @@ struct Affine : public nn::Layer {
     }
 
     void compile(size_t batch_size) override {
-        // TODO add randomization
         weights = Tape(size, prev->size);
         weights.malloc();
-        math::normal(weights.values, 0.f, 1.0f / std::sqrtf(prev->size));
+
+        math::normal(weights.values, 0.f, std::sqrtf(2.0f / prev->size));
         weights.values >> data::GPU;
 
-        // TODO add randomization
         bias = Tape(size, 1);
         bias.malloc();
 

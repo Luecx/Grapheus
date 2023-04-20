@@ -14,7 +14,7 @@ struct MPE : public Loss {
         : power(power)
         , average_gradients(averageGradients) {}
 
-    virtual void apply(Tape& output, data::DenseMatrix<float> target) {
+    virtual void apply(Tape& output) {
         operations::mpe<data::GPU>(output.values,
                                    output.gradients,
                                    target,
