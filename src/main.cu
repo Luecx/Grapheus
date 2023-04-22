@@ -1,50 +1,145 @@
 
+#include "chess/chess.h"
+#include "dataset/batchloader.h"
 #include "dataset/dataset.h"
-#include "dataset/process.h"
 #include "dataset/io.h"
+#include "dataset/process.h"
+#include "misc/csv.h"
 #include "misc/timer.h"
 #include "nn/nn.h"
 #include "operations/operations.h"
-#include "chess/chess.h"
-#include "dataset/batchloader.h"
 
 #include <fstream>
 
 using namespace nn;
 using namespace data;
 
-struct KoiModel : nn::Model{
+struct ChessModel : nn::Model {
 
-    static constexpr int B   = 16384;   // positions per batch
-    static constexpr int BPE = 1e8 / B; // batches per epoch
-    static constexpr int E   = 1000;    // maximum epochs
+    // seting inputs
+    virtual void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions) = 0;
 
-    static constexpr int T   = 16;      // threads to use on the cpu
+    // train function
+    void train(dataset::BatchLoader<chess::Position>& loader,
+               int                                    epochs     = 1000,
+               int                                    epoch_size = 1e7) {
+        this->compile(loader.batch_size);
 
-    SparseInput* in1;
-    SparseInput* in2;
+        Timer t {};
+        for (int i = 0; i < epochs; i++) {
+            t.start();
+            size_t prev_duration = 0;
+            float  batch_loss    = 0;
+            float  epoch_loss    = 0;
 
-    KoiModel() {
-        in1 = add<SparseInput>(16 * 12 * 64, 32);
-        in2 = add<SparseInput>(16 * 12 * 64, 32);
+            for (int b = 0; b < epoch_size / loader.batch_size; b++) {
+                // get the next dataset and set it up while the other things
+                // are running on the gpu
+                auto* ds = loader.next();
+                setup_inputs_and_outputs(ds);
+
+                // print score of last iteration
+                if (b > 0) {
+                    batch_loss = loss_of_last_batch();
+                    epoch_loss += batch_loss;
+                }
+
+                t.stop();
+                if (b > 0
+                    && (b == (epoch_size / loader.batch_size) - 1
+                        || t.elapsed() - prev_duration > 1000)) {
+                    prev_duration = t.elapsed();
+
+                    printf("\rep/ba = [%3d/%5d], ", i, b);
+                    printf("batch_loss = [%1.8f], ", batch_loss);
+                    printf("epoch_loss = [%1.8f], ", epoch_loss / b);
+                    printf("speed = [%9d pos/s], ",
+                           (int) round(1000.0f * loader.batch_size * b / t.elapsed()));
+                    printf("time = [%3ds]", (int) t.elapsed() / 1000);
+                    std::cout << std::flush;
+                }
+
+                // start training of new batch
+                batch();
+            }
+
+            std::cout << std::endl;
+            next_epoch();
+        }
+    }
+
+    void test_fen(const std::string& fen){
+        this->compile(1);
+
+        chess::Position pos = chess::parse_fen(fen);
+        dataset::DataSet<chess::Position> ds{};
+        ds.positions.push_back(pos);
+        ds.header.entry_count = 1;
+
+        // setup inputs of network
+        setup_inputs_and_outputs(&ds);
+
+        // forward pass
+        this->upload_inputs();
+        this->forward();
+
+        // go through the layers and download values
+
+        std::cout << "==================================================================================\n";
+        std::cout << "testing fen: " << fen << std::endl;
+
+        int idx = 0;
+        for(auto layer:m_layers){
+            layer->dense_output.values >> CPU;
+
+            std::cout << "LAYER " << ++idx << std::endl;
+            for(int i = 0; i < std::min((size_t)16, layer->size); i++){
+                std::cout << std::setw(10) << layer->dense_output.values(i);
+            }
+            if(layer->size > 16){
+                std::cout << " ......... " << layer->dense_output.values(layer->size - 1);
+            }
+            std::cout << "\n";
+        }
+    }
+};
+
+struct KoiModel : ChessModel {
+    static constexpr int THREADS = 16;    // threads to use on the cpu
+
+    SparseInput*         in1;
+    SparseInput*         in2;
+
+    KoiModel() : ChessModel() {
+        in1     = add<SparseInput>(16 * 12 * 64, 32);
+        in2     = add<SparseInput>(16 * 12 * 64, 32);
 
         auto ft = add<FeatureTransformer>(in1, in2, 512);
         auto re = add<ReLU>(ft);
-        auto af = add<Affine>(re,1);
+        auto af = add<Affine>(re, 1);
         auto sm = add<Sigmoid>(af, 2.5 / 400);
 
         set_loss(MPE {2.5, false});
-        set_lr_schedule(StepDecayLRSchedule{0.01,0.3,100});
-        add_optimizer(Adam({
-                 {OptimizerEntry{&ft->weights}},
-                 {OptimizerEntry{&ft->bias   }},
-                 {OptimizerEntry{&af->weights}},
-                 {OptimizerEntry{&af->bias   }}
-        }, 0.95, 0.999, 1e-7));
+        set_lr_schedule(StepDecayLRSchedule {0.01, 0.3, 100});
+        add_optimizer(Adam({{OptimizerEntry {&ft->weights}},
+                            {OptimizerEntry {&ft->bias}},
+                            {OptimizerEntry {&af->weights}},
+                            {OptimizerEntry {&af->bias}}},
+                           0.95,
+                           0.999,
+                           1e-7));
 
-        this->compile(B);
+        set_file_output("../res/run1/");
+        add_quantization(Quantizer {
+            "quant_1",
+            10,
+            QuantizerEntry<int16_t>(&ft->weights.values, 32, true),
+            QuantizerEntry<int16_t>(&ft->bias.values   , 32),
+            QuantizerEntry<int16_t>(&af->weights.values, 512),
+            QuantizerEntry<int16_t>(&af->bias.values   , 512 * 32),
+        });
+        set_save_frequency(10);
     }
-
 
     inline int king_square_index(chess::Square relative_king_square) {
 
@@ -75,9 +170,8 @@ struct KoiModel : nn::Model{
         const chess::PieceType piece_type         = chess::type_of(piece);
         const chess::Color     piece_color        = chess::color_of(piece);
 
-
-        chess::Square relative_king_square;
-        chess::Square relative_piece_square;
+        chess::Square          relative_king_square;
+        chess::Square          relative_piece_square;
 
         if (view == chess::WHITE) {
             relative_king_square  = king_square;
@@ -92,21 +186,20 @@ struct KoiModel : nn::Model{
             relative_piece_square = chess::mirror_hor(relative_piece_square);
         }
 
-        const int index =   relative_piece_square
-                          + piece_type            * PIECE_TYPE_FACTOR
+        const int index = relative_piece_square + piece_type * PIECE_TYPE_FACTOR
                           + (piece_color == view) * PIECE_COLOR_FACTOR
-                          + king_square_idx       * KING_SQUARE_FACTOR;
+                          + king_square_idx * KING_SQUARE_FACTOR;
         return index;
     }
 
-    void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions){
+    void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions) {
         in1->sparse_output.clear();
         in2->sparse_output.clear();
 
         auto& target = m_loss->target;
 
-#pragma omp parallel for schedule(static) num_threads(T)
-        for(int b = 0; b < B; b++){
+#pragma omp parallel for schedule(static) num_threads(THREADS)
+        for (int b = 0; b < positions->header.entry_count; b++) {
             chess::Position* pos = &positions->positions[b];
             // fill in the inputs and target values
 
@@ -114,14 +207,14 @@ struct KoiModel : nn::Model{
             chess::Square bKingSq = pos->get_king_square<chess::BLACK>();
 
             chess::BB     bb {pos->m_occupancy};
-            int    idx = 0;
+            int           idx = 0;
 
             while (bb) {
                 chess::Square sq                    = chess::lsb(bb);
                 chess::Piece  pc                    = pos->m_pieces.get_piece(idx);
 
-                auto   piece_index_white_pov = index(sq, pc, wKingSq, chess::WHITE);
-                auto   piece_index_black_pov = index(sq, pc, bKingSq, chess::BLACK);
+                auto          piece_index_white_pov = index(sq, pc, wKingSq, chess::WHITE);
+                auto          piece_index_black_pov = index(sq, pc, bKingSq, chess::BLACK);
 
                 if (pos->m_meta.stm() == chess::WHITE) {
                     in1->sparse_output.set(b, piece_index_white_pov);
@@ -147,51 +240,7 @@ struct KoiModel : nn::Model{
             float p_target = 1 / (1 + expf(-p_value * 2.5 / 400));
             float w_target = (w_value + 1) / 2.0f;
 
-            target(b) = (p_target + w_target) / 2;
-
-        }
-
-    }
-
-    void train(dataset::BatchLoader<chess::Position>& loader){
-
-        Timer t {};
-        for(int i = 0; i < E; i++){
-            t.start();
-            size_t prev_duration = 0;
-            float batch_loss = 0;
-            float epoch_loss = 0;
-
-            for(int b = 0; b < BPE; b++){
-                // get the next dataset and set it up while the other things
-                // are running on the gpu
-                auto* ds = loader.next();
-                setup_inputs_and_outputs(ds);
-
-                // print score of last iteration
-                if(b > 0) {
-                    batch_loss  = loss_of_last_batch();
-                    epoch_loss += batch_loss;
-                }
-
-                t.stop();
-                if (b > 0 && (b == BPE-1 || t.elapsed() - prev_duration > 1000)) {
-                    prev_duration = t.elapsed();
-
-                    printf("\rep/ba = [%3d/%5d], ", i, b);
-                    printf("batch_loss = [%1.8f], ", batch_loss);
-                    printf("epoch_loss = [%1.8f], ", epoch_loss / b);
-                    printf("speed = [%9d pos/s], ", (int) round(1000.0f * B * b / t.elapsed()));
-                    printf("time = [%3ds]", (int) t.elapsed() / 1000);
-                    std::cout << std::flush;
-                }
-
-                // start training of new batch
-                batch();
-            }
-
-            std::cout << std::endl;
-            next_epoch();
+            target(b)      = (p_target + w_target) / 2.0f;
         }
     }
 };
@@ -199,18 +248,20 @@ struct KoiModel : nn::Model{
 int main() {
     init();
 
-    std::vector<std::string> files{};
-    files.push_back(R"(D:\Koivisto Resourcen\Training Data Shuffled + Berserk\koi_ber_1.bin)");
-    files.push_back(R"(D:\Koivisto Resourcen\Training Data Shuffled + Berserk\koi_ber_2.bin)");
-    files.push_back(R"(D:\Koivisto Resourcen\Training Data Shuffled + Berserk\koi_ber_3.bin)");
+    std::vector<std::string> files {};
 
-    dataset::BatchLoader<chess::Position> loader{files, KoiModel::B};
+    for (int i = 1; i <= 32; i++) {
+        files.push_back(R"(D:\Koivisto Resourcen\Training Data Shuffled + Berserk\koi_ber_)"
+                        + std::to_string(i) + ".bin");
+    }
+    dataset::BatchLoader<chess::Position> loader {files, 16384};
     loader.start();
 
-    KoiModel model{};
-    model.train(loader);
-
-    loader.kill();
+    KoiModel model {};
+//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+//    model.train(loader, 10, 1e7);
+//    loader.kill();
+//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
     close();
     return 0;

@@ -23,20 +23,19 @@ struct FeatureTransformer : public Layer {
         inp2->use();
 
         ERROR(inp1->size == inp2->size);
-    }
 
-    void compile(size_t batch_size) override {
         weights = Tape(size / 2, inp1->size);
         weights.malloc();
         math::normal(weights.values,
                      0.f,
-                     1.0f / std::sqrtf(inp1->sparse_output.max_entries_per_column));
+                     1.0f / std::sqrtf(inp1->max_inputs));
         weights.values >> data::GPU;
 
         bias = Tape(size / 2, 1);
         bias.malloc();
+    }
 
-
+    void compile(size_t batch_size) override {
         // set output matrix
         compile_suboutput(batch_size, Tape(size, batch_size));
     }
@@ -59,6 +58,10 @@ struct FeatureTransformer : public Layer {
             weights.gradients, inp1->sparse_output, bias.gradients, out_1.gradients);
         operations::affine_sparse_bp<data::GPU>(
             weights.gradients, inp2->sparse_output, bias.gradients, out_2.gradients);
+    }
+
+    std::vector<Tape*> params() override {
+        return std::vector<Tape*>{&weights, &bias};
     }
 };
 

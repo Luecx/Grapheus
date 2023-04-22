@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../dataset/dataset.h"
 #include "bitboard.h"
 #include "piece.h"
 #include "piecelist.h"
@@ -9,10 +10,9 @@
 #include <iomanip>
 #include <ostream>
 
-namespace chess{
+namespace chess {
 
-
-struct Position : dataset::DataSetEntry{
+struct Position : dataset::DataSetEntry {
 
     PieceList               m_pieces {};
     BB                      m_occupancy {};
@@ -29,16 +29,20 @@ struct Position : dataset::DataSetEntry{
     }
 
     template<Piece piece>
-    bool has_piece(){
+    bool has_piece() {
         int idx = m_pieces.template bitscan_piece<piece>();
         return idx >= 0 && idx < 32;
     }
 
-    int piece_count() const { return popcount(m_occupancy); }
+    int piece_count() const {
+        return popcount(m_occupancy);
+    }
 
-    Square get_square(int piece_index) const { return nlsb(m_occupancy, piece_index); }
+    Square get_square(int piece_index) const {
+        return nlsb(m_occupancy, piece_index);
+    }
 
-    Piece  get_piece(Square square) const {
+    Piece get_piece(Square square) const {
         if (has(m_occupancy, square)) {
             return m_pieces.get_piece(popcount(m_occupancy, square));
         }
@@ -46,4 +50,4 @@ struct Position : dataset::DataSetEntry{
     }
 };
 
-}
+}    // namespace chess

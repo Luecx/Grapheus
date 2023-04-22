@@ -3,6 +3,9 @@
 #include "../../operations/operations.h"
 #include "layer.h"
 
+namespace nn{
+
+
 struct AffineBatched : public nn::Layer {
 
     size_t     batches;
@@ -18,21 +21,18 @@ struct AffineBatched : public nn::Layer {
         prev->use();
         ERROR(prev->size % batches == 0);
         ERROR(size % batches == 0);
-    }
 
-    void compile(size_t batch_size) override {
-        compile_suboutput(batch_size, nn::Tape(size, batch_size));
         // create weights and biases
-        // clang-format off
         weights = nn::Tape(size, prev->size / batches);
         bias    = nn::Tape(size, 1);
         weights.malloc();
         bias   .malloc();
-
         math::normal(weights.values, 0.f, 1.0f / std::sqrtf(prev->size));
         weights.values >> data::GPU;
+    }
 
-        // clang-format on
+    void compile(size_t batch_size) override {
+        compile_suboutput(batch_size, nn::Tape(size, batch_size));
     }
 
     void compile_suboutput(size_t batch_size, const nn::Tape& output) override {
@@ -59,4 +59,10 @@ struct AffineBatched : public nn::Layer {
                                                  batches);
 
     }
+
+    std::vector<Tape*> params() override {
+        return std::vector<Tape*>{&weights, &bias};
+    }
 };
+
+}

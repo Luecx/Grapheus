@@ -51,6 +51,11 @@ struct Layer {
     void unused() {
         output_used_counter--;
     }
+
+    // get all the parameters related to this layer
+    virtual std::vector<Tape*> params() {
+        return {};
+    };
 };
 
 }    // namespace nn

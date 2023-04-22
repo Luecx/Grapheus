@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../misc/assert.h"
 #include "dataset.h"
 #include "io.h"
 
@@ -31,8 +32,8 @@ struct BatchLoader {
     BatchLoader(std::vector<std::string> p_files, int batch_size, int validate_files = true)
         : batch_size(batch_size) {
 
-        load_buffer.resize(batch_size);
-        active_batch.positions.resize(batch_size);
+        load_buffer .resize(batch_size);
+        active_batch.resize(batch_size);
 
         files                              = std::move(p_files);
         current_file_index                 = -1;
@@ -46,7 +47,7 @@ struct BatchLoader {
                         files.end());
         }
 
-        ERROR(files.size() > 0)
+        ERROR(files.size() > 0);
     }
 
     virtual ~BatchLoader() {

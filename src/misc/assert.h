@@ -3,8 +3,7 @@
 //
 
 #pragma once
-#include "../misc/start.h"
-
+#include "start.h"
 #include <iostream>
 
 #ifdef NDEBUG

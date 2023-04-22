@@ -3,7 +3,9 @@
 #include "../losses/loss.h"
 #include "../optimizer/lrschedule.h"
 #include "../optimizer/optimizer.h"
+#include "quantization.h"
 
+#include <filesystem>
 #include <type_traits>
 
 namespace nn {
@@ -16,13 +18,18 @@ struct Model {
     using OptiPtr  = std::shared_ptr<Optimizer>;
     using LRSPtr   = std::shared_ptr<LRSchedule>;
 
-    std::vector<LayerPtr> m_layers {};
-    std::vector<InputPtr> m_inputs {};
-    std::vector<OptiPtr>  m_optimizers {};
-    LossPtr               m_loss {};
-    LRSPtr                m_lr_schedule {};
+    std::vector<LayerPtr>  m_layers {};
+    std::vector<InputPtr>  m_inputs {};
+    std::vector<OptiPtr>   m_optimizers {};
+    std::vector<Quantizer> m_quantizers {};
+    LossPtr                m_loss {};
+    LRSPtr                 m_lr_schedule {};
+    CSVWriter              m_csv {};
 
-    size_t epoch = 0;
+
+    size_t                 m_epoch = 1;
+    size_t                 m_save_frequency = 1;
+    std::filesystem::path  m_path;
 
     Model() {
         m_layers.reserve(1024);
@@ -63,7 +70,28 @@ struct Model {
         m_lr_schedule             = ptr;
     }
 
+    void set_file_output(const std::string& outpath){
+        m_path = outpath;
+        std::filesystem::create_directories(outpath);
+        m_csv.open((std::filesystem::path(m_path) / std::filesystem::path("loss.csv")).string());
+    }
+
+    void add_quantization(const Quantizer& quantizer){
+        ERROR(std::filesystem::exists(m_path));
+        m_quantizers.push_back(quantizer);
+        m_quantizers.back().set_path((m_path / std::filesystem::path("quant")).string());
+    }
+
+    void set_save_frequency(size_t frequency){
+        ERROR(frequency > 0);
+        m_save_frequency = frequency;
+    }
+
     void compile(int batch_size) {
+        ERROR(this->m_loss != nullptr);
+        ERROR(this->m_inputs.size());
+        ERROR(this->m_layers.size());
+
         this->m_loss.get()->compile(m_layers.back().get(), batch_size);
 
         for (auto& l : m_inputs) {
@@ -104,6 +132,12 @@ struct Model {
         }
     }
 
+    void quantize(){
+        for(auto& h:m_quantizers){
+            h.save(m_epoch);
+        }
+    }
+
     void backward() {
         for (auto it = m_layers.rbegin(); it != m_layers.rend(); ++it) {
             (*it)->backward();
@@ -131,7 +165,7 @@ struct Model {
         backward();
 
         // step 5: optimize
-        float lr = m_lr_schedule.get()->get_lr(epoch);
+        float lr = m_lr_schedule.get()->get_lr(m_epoch);
         for(auto& opt:m_optimizers){
             opt->step(lr);
         }
@@ -154,8 +188,46 @@ struct Model {
     }
 
     void next_epoch(){
-        epoch++;
+        // quantitize weights
+        quantize();
+        // save weights
+        if (m_epoch % m_save_frequency == 0)
+            save_weights(this->m_path / "weights" / (std::to_string(m_epoch) + ".state"));
+
+        m_epoch++;
     }
+
+    void save_weights(const std::filesystem::path& name){
+
+        std::filesystem::create_directory(absolute(name).parent_path());
+        std::ofstream file(name);
+
+        // layers
+        for(auto& l:m_layers){
+            for(auto* p:l->params()){
+                p->values >> data::CPU;
+                file.write(reinterpret_cast<const char*>(p->values.first<data::CPU>()), p->values.m * p->values.n);
+            }
+        }
+
+        file.close();
+    }
+
+    void load_weights(const std::filesystem::path& name){
+        std::ifstream file(name);
+
+        // layers
+        for(auto& l:m_layers){
+            for(auto* p:l->params()){
+                file.read(reinterpret_cast<char*>(p->values.first<data::CPU>()), p->values.m * p->values.n);
+                p->values >> data::GPU;
+            }
+        }
+
+        file.close();
+    }
+
+
 };
 
 }    // namespace nn

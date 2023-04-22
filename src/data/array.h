@@ -3,7 +3,7 @@
 //
 
 #pragma once
-#include "../debug/assert.h"
+#include "../misc/assert.h"
 
 #include <cstring>
 #include <iostream>
