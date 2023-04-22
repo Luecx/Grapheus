@@ -74,6 +74,7 @@ struct Model {
         m_path = outpath;
         std::filesystem::create_directories(outpath);
         m_csv.open((std::filesystem::path(m_path) / std::filesystem::path("loss.csv")).string());
+        m_csv.write("epoch", "training loss");
     }
 
     void add_quantization(const Quantizer& quantizer){
@@ -149,6 +150,10 @@ struct Model {
         return this->m_loss->loss.get(0);
     }
 
+    void write_epoch_result(float res){
+        this->m_csv.write(m_epoch, res);
+    }
+
     void batch(){
         // step 1: sync with cpu and upload inputs and reset loss
         reset_loss();
@@ -187,9 +192,10 @@ struct Model {
         return loss_of_last_batch();
     }
 
-    void next_epoch(){
+    void next_epoch(float epoch_loss){
         // quantitize weights
         quantize();
+        write_epoch_result(epoch_loss);
         // save weights
         if (m_epoch % m_save_frequency == 0)
             save_weights(this->m_path / "weights" / (std::to_string(m_epoch) + ".state"));

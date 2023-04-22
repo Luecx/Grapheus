@@ -64,7 +64,7 @@ struct ChessModel : nn::Model {
             }
 
             std::cout << std::endl;
-            next_epoch();
+            next_epoch(epoch_loss);
         }
     }
 
@@ -259,8 +259,8 @@ int main() {
 
     KoiModel model {};
 //    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-//    model.train(loader, 10, 1e7);
-//    loader.kill();
+    model.train(loader, 10, 1e7);
+    loader.kill();
 //    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
     close();

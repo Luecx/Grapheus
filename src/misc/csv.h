@@ -22,17 +22,16 @@ struct CSVWriter {
         csv_file.close();
     }
 
+    template<typename T, typename... Args>
+    void write(T arg, Args... args) {
+        csv_file << "\"" << arg << "\"";
 
-
-    void write(std::initializer_list<std::string> args) {
-        for (auto col = args.begin(); col != args.end(); ++col) {
-            if (col != args.begin())
-                csv_file << separator;
-
-            csv_file << "\"" << *col << "\"";
+        if constexpr (sizeof...(args) > 0) {
+            csv_file << separator;
+            write(args...);
+        } else {
+            // new line and flush output
+            csv_file << std::endl;
         }
-
-        // new line and flush output
-        csv_file << std::endl;
     }
 };
