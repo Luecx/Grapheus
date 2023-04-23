@@ -53,7 +53,7 @@ inline void affine_sparse_bp(
     if(data::is_gpu(DEV)){
         // TODO tune
         constexpr int block_size_x = 1;
-        constexpr int block_size_y = 64;
+        constexpr int block_size_y = 128;
 
         dim3 block(block_size_x, block_size_y);
         dim3 grid (std::ceil((float)res_grd.n / block_size_x),

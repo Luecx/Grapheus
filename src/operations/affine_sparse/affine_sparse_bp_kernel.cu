@@ -21,12 +21,12 @@ __global__ void operations::affine_sparse_bp_kernel(
         return;
 
     // get the offset at which we look into our sparse input
-    int offset = col * (inp_col_max_entries + 1);
+    const int offset = col * (inp_col_max_entries + 1);
     // check how many values we are going to read
-    int count = inp_col_indices[offset];
+    const int count = inp_col_indices[offset];
 
-    // track the sum
     float res_grd_v = res_grd[MATRIX_INDEX(ldc, row, col)];
+    if(res_grd_v == 0) return;
 
     // start at offset + 1 (offset contains the amount of values to read)
     for (int i = offset + 1; i < offset + 1 + count; i++) {
