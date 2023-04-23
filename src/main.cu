@@ -135,8 +135,8 @@ struct KoiModel : ChessModel {
             10,
             QuantizerEntry<int16_t>(&ft->weights.values, 32, true),
             QuantizerEntry<int16_t>(&ft->bias.values   , 32),
-            QuantizerEntry<int16_t>(&af->weights.values, 512),
-            QuantizerEntry<int16_t>(&af->bias.values   , 512 * 32),
+            QuantizerEntry<int16_t>(&af->weights.values, 128),
+            QuantizerEntry<int32_t>(&af->bias.values   , 128 * 32),
         });
         set_save_frequency(10);
     }
@@ -258,10 +258,11 @@ int main() {
     loader.start();
 
     KoiModel model {};
+//    model.quantize("test.net");
 //    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     model.train(loader, 10, 1e7);
     loader.kill();
-//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
     close();
     return 0;

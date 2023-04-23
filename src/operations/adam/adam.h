@@ -33,7 +33,11 @@ __global__ void adam_kernel(float* __restrict__ values,
     // adjust gradient using ridge
     gradients[idv] += 2 * ridge * values[idv];
 
-    if(gradients[idv] == 0) return;
+    if(gradients[idv] == 0) {
+        first_moment [idm] *= beta1;
+        second_moment[idm] *= beta2;
+        return;
+    }
 
     // standard adam
     first_moment[idm]  = beta1 * first_moment [idm] + (1 - beta1) * gradients[idv];

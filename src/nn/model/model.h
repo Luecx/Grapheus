@@ -36,6 +36,11 @@ struct Model {
         m_inputs.reserve(1024);
     }
 
+    // ----------------------------------------------------------------------------------------------
+    // functions to set up the model
+    // ----------------------------------------------------------------------------------------------
+
+    // add a layer to the model
     template<typename LT, typename... ARGS>
     LT* add(ARGS&&... args) {
         std::shared_ptr<LT> ptr = std::make_shared<LT>(std::forward<ARGS>(args)...);
@@ -49,6 +54,7 @@ struct Model {
         return ptr.get();
     }
 
+    // sets the loss of the model
     template<typename LT>
     void set_loss(const LT& loss) {
         static_assert(std::is_base_of_v<Loss, LT>, "Invalid argument type for set_loss function");
@@ -56,6 +62,7 @@ struct Model {
         this->m_loss = ptr;
     }
 
+    // adds an optimiser
     template<typename LT>
     void add_optimizer(const LT& opt) {
         static_assert(std::is_base_of_v<Optimizer, LT>, "LT must be derived from Optimizer.");
@@ -63,6 +70,7 @@ struct Model {
         m_optimizers.emplace_back(ptr);
     }
 
+    // sets the lr schedule. the lr schedule feeds into the optimisers
     template<typename LT>
     void set_lr_schedule(const LT& lr) {
         static_assert(std::is_base_of_v<LRSchedule, LT>, "LT must be derived from LRSchedule.");
@@ -70,6 +78,7 @@ struct Model {
         m_lr_schedule             = ptr;
     }
 
+    // sets the default output path where quantised networks etc will be placed
     void set_file_output(const std::string& outpath){
         m_path = outpath;
         std::filesystem::create_directories(outpath);
@@ -77,17 +86,22 @@ struct Model {
         m_csv.write("epoch", "training loss");
     }
 
+    // adds a quantization
     void add_quantization(const Quantizer& quantizer){
         ERROR(std::filesystem::exists(m_path));
         m_quantizers.push_back(quantizer);
         m_quantizers.back().set_path((m_path / std::filesystem::path("quant")).string());
     }
 
+    // sets the frequency at which states will be saved
     void set_save_frequency(size_t frequency){
         ERROR(frequency > 0);
         m_save_frequency = frequency;
     }
 
+    // ----------------------------------------------------------------------------------------------
+    // compilation
+    // ----------------------------------------------------------------------------------------------
     void compile(int batch_size) {
         ERROR(this->m_loss != nullptr);
         ERROR(this->m_inputs.size());
@@ -108,6 +122,9 @@ struct Model {
         }
     }
 
+    // ----------------------------------------------------------------------------------------------
+    // training
+    // ----------------------------------------------------------------------------------------------
     void upload_inputs() {
         for (auto& l : m_inputs) {
             if (l->output_type() == DENSE) {
@@ -133,12 +150,6 @@ struct Model {
         }
     }
 
-    void quantize(){
-        for(auto& h:m_quantizers){
-            h.save(m_epoch);
-        }
-    }
-
     void backward() {
         for (auto it = m_layers.rbegin(); it != m_layers.rend(); ++it) {
             (*it)->backward();
@@ -148,10 +159,6 @@ struct Model {
     float loss_of_last_batch(){
         this->m_loss->loss >> data::CPU;
         return this->m_loss->loss.get(0);
-    }
-
-    void write_epoch_result(float res){
-        this->m_csv.write(m_epoch, res);
     }
 
     void batch(){
@@ -201,6 +208,23 @@ struct Model {
             save_weights(this->m_path / "weights" / (std::to_string(m_epoch) + ".state"));
 
         m_epoch++;
+    }
+
+    // ----------------------------------------------------------------------------------------------
+    // saving and writing results
+    // ----------------------------------------------------------------------------------------------
+    void quantize(const std::string& name = ""){
+        for(auto& h:m_quantizers){
+            if(name == ""){
+                h.save(m_epoch);
+            }else{
+                h.save(name);
+            }
+        }
+    }
+
+    void write_epoch_result(float res){
+        this->m_csv.write(m_epoch, res);
     }
 
     void save_weights(const std::filesystem::path& name){

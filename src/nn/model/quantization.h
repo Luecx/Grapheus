@@ -79,14 +79,18 @@ struct Quantizer {
 
     void save(int epoch) {
         if (epoch % frequency == 0) {
-            std::ofstream file(path / ("epoch_" + std::to_string(epoch) + ".net"));
-
-            for (auto& entry : entries) {
-                entry->write(file);
-            }
-
-            file.close();
+            save("epoch_" + std::to_string(epoch) + ".net");
         }
+    }
+
+    void save(std::string name) {
+        std::ofstream file(path / name, std::ios::out | std::ios::binary);
+
+        for (auto& entry : entries) {
+            entry->write(file);
+        }
+
+        file.close();
     }
 };
 }
