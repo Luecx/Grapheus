@@ -27,7 +27,14 @@ struct AffineBatched : public nn::Layer {
         bias    = nn::Tape(size, 1);
         weights.malloc();
         bias   .malloc();
-        math::normal(weights.values, 0.f, 1.0f / std::sqrtf(prev->size));
+
+//        float stdv = sqrt(1.0f / (float)prev->size);
+//        math::uniform(weights.values, -stdv, stdv );
+//        math::uniform(bias   .values, -stdv, stdv );
+
+        float stdv = sqrt(2.0f / (float)prev->size);
+        math::normal(weights.values, 0.0f, stdv );
+
         weights.values >> data::GPU;
     }
 

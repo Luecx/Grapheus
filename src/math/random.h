@@ -14,10 +14,13 @@ inline void seed(uint32_t seed_value){
 
 template<typename TYPE>
 inline void normal(data::DenseMatrix<TYPE>& matrix, TYPE mean, TYPE dev){
+    // TODO: remove the generator here and use the twister
+    // this is only for reproducibility compared to CudAD
+    std::default_random_engine     generator{};
     std::normal_distribution<TYPE> distribution(mean, dev);
-    for (int i = 0; i < matrix.m; i++) {
-        for (int j = 0; j < matrix.n; j++) {
-            matrix.get(i, j) = distribution(twister);
+    for (int j = 0; j < matrix.n; j++) {
+        for (int i = 0; i < matrix.m; i++) {
+            matrix.get(i, j) = distribution(generator);
         }
     }
 }

@@ -10,3 +10,9 @@ bin/
 cmake-build/
 
 obj/
+
+res/
+
+cmake-build-release-cuda/
+
+cmake-build-debug-cuda/

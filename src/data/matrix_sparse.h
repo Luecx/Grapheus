@@ -22,6 +22,13 @@ struct SparseMatrix : public data::Matrix {
         values[offset + values[offset]] = index;
     }
 
+    void sort(int input_idx){
+        auto offset = (max_entries_per_column + 1) * input_idx;
+        auto entries = values[offset];
+        auto first   = &(values[offset + 1]);
+        std::sort(first, first + entries);
+    }
+
     void malloc() {
         values.malloc<data::BOTH>();
     }

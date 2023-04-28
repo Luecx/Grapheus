@@ -24,15 +24,22 @@ struct FeatureTransformer : public Layer {
 
         ERROR(inp1->size == inp2->size);
 
+
         weights = Tape(size / 2, inp1->size);
         weights.malloc();
-        math::normal(weights.values,
-                     0.f,
-                     1.0f / std::sqrtf(inp1->max_inputs));
-        weights.values >> data::GPU;
-
         bias = Tape(size / 2, 1);
         bias.malloc();
+
+        float stdv = sqrt(2.0f / (float)inp1->size);
+        math::normal(weights.values, 0.0f, stdv );
+
+//        float stdv = sqrt(1.0f / (float)inp1->size);
+//        math::uniform(weights.values, -stdv, stdv );
+//        math::uniform(bias   .values, -stdv, stdv );
+
+        weights.values >> data::GPU;
+        bias   .values >> data::GPU;
+
     }
 
     void compile(size_t batch_size) override {
@@ -52,12 +59,15 @@ struct FeatureTransformer : public Layer {
             weights.values, inp1->sparse_output, bias.values, out_1.values);
         operations::affine_sparse<data::GPU>(
             weights.values, inp2->sparse_output, bias.values, out_2.values);
+//        operations::affine_sparse_shared<data::GPU>(weights.values, inp1->sparse_output, inp2->sparse_output, bias.values, dense_output.values);
     }
     void backward() override {
         operations::affine_sparse_bp<data::GPU>(
             weights.gradients, inp1->sparse_output, bias.gradients, out_1.gradients);
         operations::affine_sparse_bp<data::GPU>(
             weights.gradients, inp2->sparse_output, bias.gradients, out_2.gradients);
+        // dont use this code, its slower for some stupid reason
+//        operations::affine_sparse_shared_bp<data::GPU>(weights.gradients, inp1->sparse_output, inp2->sparse_output, bias.gradients, dense_output.gradients);
     }
 
     std::vector<Tape*> params() override {

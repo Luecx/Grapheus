@@ -1,8 +1,5 @@
-//
-// Created by finne on 07.04.2023.
-//
-
 #pragma once
+
 #include "distribute/distribute.h"
 #include "distribute/distribute_bp.h"
 #include "select/select.h"
@@ -25,6 +22,8 @@
 #include "affine_batched/affine_batched_bp.h"
 #include "affine_sparse/affine_sparse.h"
 #include "affine_sparse/affine_sparse_bp.h"
+#include "affine_sparse_shared/affine_sparse_shared.h"
+#include "affine_sparse_shared/affine_sparse_shared_bp.h"
 
 #include "ax_p_by/ax_p_by.h"
 #include "ax_p_by/ax_p_by_bp.h"

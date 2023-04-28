@@ -64,7 +64,7 @@ struct ChessModel : nn::Model {
             }
 
             std::cout << std::endl;
-            next_epoch(epoch_loss);
+            next_epoch(epoch_loss / (epoch_size / loader.batch_size));
         }
     }
 
@@ -94,13 +94,97 @@ struct ChessModel : nn::Model {
 
             std::cout << "LAYER " << ++idx << std::endl;
             for(int i = 0; i < std::min((size_t)16, layer->size); i++){
-                std::cout << std::setw(10) << layer->dense_output.values(i);
+                std::cout << std::setw(10) << layer->dense_output.values(i, 0);
             }
             if(layer->size > 16){
-                std::cout << " ......... " << layer->dense_output.values(layer->size - 1);
+                std::cout << " ......... " << layer->dense_output.values(layer->size - 1, 0);
             }
             std::cout << "\n";
         }
+    }
+
+    void distribution(dataset::BatchLoader<chess::Position>& loader, int batches = 32){
+        this->compile(loader.batch_size);
+
+        std::vector<DenseMatrix<float>> max_values{};
+        std::vector<DenseMatrix<float>> min_values{};
+
+        for(auto l:m_layers){
+            max_values.emplace_back(l->dense_output.values.m, 1);
+            min_values.emplace_back(l->dense_output.values.m, 1);
+            max_values.back().malloc<data::CPU>();
+            min_values.back().malloc<data::CPU>();
+            math::uniform(max_values.back(), -1000000.0f, -1000000.0f);
+            math::uniform(min_values.back(),  1000000.0f,  1000000.0f);
+        }
+
+        for (int b = 0; b < batches; b++) {
+            auto* ds = loader.next();
+            setup_inputs_and_outputs(ds);
+            this->upload_inputs();
+            this->forward();
+            std::cout << "\r" << b << " / " << batches << std::flush;
+
+            // get minimum and maximum values
+            for(int i = 0; i < m_layers.size(); i++) {
+                auto layer = m_layers[i].get();
+                layer->dense_output.values >> data::CPU;
+                for(int m =0; m < layer->dense_output.values.m; m++){
+                    for(int n =0; n < layer->dense_output.values.n; n++){
+                        max_values[i](m,0) = std::max(max_values[i](m,0),  layer->dense_output.values(m,n));
+                        min_values[i](m,0) = std::min(min_values[i](m,0),  layer->dense_output.values(m,n));
+                    }
+                }
+            }
+        }
+        std::cout << std::endl;
+
+
+        for(int i = 0; i < m_layers.size(); i++) {
+            std::cout << "------------ LAYER " << i+1 << " --------------------" << std::endl;
+            std::cout << "min: ";
+            for(int j = 0; j < std::min((size_t)16, min_values[i].size()); j++){
+                std::cout << std::setw(10) << min_values[i](j);
+            }
+            if(min_values[i].size() > 16){
+                std::cout << " ......... " << min_values[i](min_values.size()-1);
+            }
+            std::cout << "\n";
+
+            std::cout << "max: ";
+            for(int j = 0; j < std::min((size_t)16, max_values[i].size()); j++){
+                std::cout << std::setw(10) << max_values[i](j);
+            }
+            if(max_values[i].size() > 16){
+                std::cout << " ......... " << max_values[i](max_values.size()-1);
+            }
+
+            int died = 0;
+            for(int j = 0; j < max_values[i].size(); j++){
+                if(std::abs(max_values[i](j) - min_values[i](j)) < 1e-8){
+                    died ++;
+                }
+            }
+
+            std::cout << "\n";
+            std::cout << "died: " << died << " / " << max_values[i].size();
+            std::cout << "\n";
+
+            for(auto p : m_layers[i]->params()){
+                float min =  10000000;
+                float max = -10000000;
+                for(int m =0; m < p->values.m; m++){
+                    for(int n =0; n < p->values.n; n++){
+                        min = std::min(min, p->values(m,n));
+                        max = std::max(max, p->values(m,n));
+                    }
+                }
+
+                std::cout << "param bounds: [" << min << " ; " << max << "]\n";
+            }
+
+        }
+
     }
 };
 
@@ -125,18 +209,18 @@ struct KoiModel : ChessModel {
                             {OptimizerEntry {&ft->bias}},
                             {OptimizerEntry {&af->weights}},
                             {OptimizerEntry {&af->bias}}},
-                           0.95,
+                           0.9,
                            0.999,
-                           1e-7));
+                           1e-8));
 
-        set_file_output("../res/run1/");
+        set_file_output("../res/run4/");
         add_quantization(Quantizer {
             "quant_1",
             10,
-            QuantizerEntry<int16_t>(&ft->weights.values, 32, true),
-            QuantizerEntry<int16_t>(&ft->bias.values   , 32),
-            QuantizerEntry<int16_t>(&af->weights.values, 128),
-            QuantizerEntry<int32_t>(&af->bias.values   , 128 * 32),
+            QuantizerEntry<int16_t>(&ft->weights.values, 16, true),
+            QuantizerEntry<int16_t>(&ft->bias.values   , 16),
+            QuantizerEntry<int16_t>(&af->weights.values, 256),
+            QuantizerEntry<int32_t>(&af->bias.values   , 256 * 16),
         });
         set_save_frequency(10);
     }
@@ -198,7 +282,7 @@ struct KoiModel : ChessModel {
 
         auto& target = m_loss->target;
 
-#pragma omp parallel for schedule(static) num_threads(THREADS)
+#pragma omp parallel for schedule(static) num_threads(16)
         for (int b = 0; b < positions->header.entry_count; b++) {
             chess::Position* pos = &positions->positions[b];
             // fill in the inputs and target values
@@ -247,7 +331,6 @@ struct KoiModel : ChessModel {
 
 int main() {
     init();
-
     std::vector<std::string> files {};
 
     for (int i = 1; i <= 32; i++) {
@@ -258,11 +341,38 @@ int main() {
     loader.start();
 
     KoiModel model {};
-//    model.quantize("test.net");
-//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    model.train(loader, 10, 1e7);
-    loader.kill();
+//    model.load_weights(R"(F:\OneDrive\ProgrammSpeicher\CLionProjects\CudAD\resources\runs\experiment_37\weights-epoch1000.nnue)");
+    model.train(loader, 1000, 1e8);
+//    model.distribution(loader, 32);
+
     model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+//    model.compile(16384);
+//    model.setup_inputs_and_outputs(loader.next());
+//    model.batch();
+//    std::cout << model.loss_of_last_batch() << std::endl;
+
+
+
+//    model.load_weights("../res/run1/weights/test.state");
+//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+//    model.train(loader, 1000, 1e8);
+//    model.load_weights("../res/run2/weights/1000.state");
+//    model.distribution(loader);
+//    model.quantize("final_16_256.net");
+
+//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+//    model.save_weights("../res/run1/weights/test.state");
+
+//    model.compile(1);
+//    model.load_weights(R"(C:\Users\Luecx\CLionProjects\Grapheus\res\run1\weights\300.state)");
+//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+//
+//    model.load_weights(R"(C:\Users\Luecx\CLionProjects\Grapheus\res\run1\weights\200.state)");
+//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+
+
+//    model.train(loader, 1000, 1e8);
+    loader.kill();
 
     close();
     return 0;

@@ -22,11 +22,18 @@ struct Affine : public nn::Layer {
         weights = Tape(size, prev->size);
         weights.malloc();
 
-        math::normal(weights.values, 0.f, std::sqrtf(2.0f / prev->size));
-        weights.values >> data::GPU;
-
         bias = Tape(size, 1);
         bias.malloc();
+
+        float stdv = sqrt(2.0f / (float)prev->size);
+        math::normal(weights.values, 0.0f, stdv );
+
+//        float stdv = sqrt(1.0f / (float)prev->size);
+//        math::uniform(weights.values, -stdv, stdv );
+//        math::uniform(bias   .values, -stdv, stdv );
+
+        weights.values >> data::GPU;
+        bias   .values >> data::GPU;
     }
 
     void compile(size_t batch_size) override {

@@ -76,7 +76,7 @@ struct StepDecayLRSchedule : public LRSchedule {
     float         decay_rate;     // The decay rate for the learning rate.
     int           decay_steps;    // The number of epochs between decay steps.
     virtual float get_lr(int epoch) const override {
-        return initial_lr * pow(decay_rate, std::floor((float) epoch / decay_steps));
+        return initial_lr * pow(decay_rate, std::floor((float) (epoch - 1) / decay_steps));
     }
 };
 

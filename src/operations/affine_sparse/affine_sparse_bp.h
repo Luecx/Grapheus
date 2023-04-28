@@ -72,7 +72,7 @@ inline void affine_sparse_bp(
         dim3 grid2  (std::ceil((float) res_grd.n / 128),
                      std::ceil((float) res_grd.m / 8));
 
-        cudaMemset(bia_grd.first<DEV>(), 0, sizeof(float) * bia_grd.m);
+//        cudaMemset(bia_grd.first<DEV>(), 0, sizeof(float) * bia_grd.m);
         reduce_row<<<grid2, block2>>>(res_grd.first<DEV>(),
                                       bia_grd.first<DEV>(),
                                       res_grd.m,

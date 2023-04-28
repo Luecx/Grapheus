@@ -16,10 +16,10 @@ __device__ void inline reduce_warp(volatile float* sdata, size_t tid) {
 }
 
 __global__ inline void reduce_row(const float* mat,
-                           float* res,
-                           const int m,
-                           const int n,
-                           const int ld) {
+                                        float* res,
+                                  const int m,
+                                  const int n,
+                                  const int ld) {
     int row = threadIdx.y + blockIdx.y * blockDim.y;
     int col = threadIdx.x + blockIdx.x * blockDim.x * 2;
 
@@ -101,7 +101,7 @@ inline void affine_bp(const data::DenseMatrix<float>& inp,
     dim3          grid(std::ceil((float) out_grd.n / block_size_x),
               std::ceil((float) out_grd.m / block_size_y));
 
-    cudaMemset(bia_grd.first<DEV>(), 0, sizeof(float) * bia_grd.m);
+//    cudaMemset(bia_grd.first<DEV>(), 0, sizeof(float) * bia_grd.m);
     reduce_row<<<grid, block>>>(out_grd.first<DEV>(),
                                 bia_grd.first<DEV>(),
                                 out_grd.m,

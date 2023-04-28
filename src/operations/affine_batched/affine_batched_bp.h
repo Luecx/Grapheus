@@ -82,7 +82,7 @@ inline void affine_batched_bp(const data::DenseMatrix<float>& inp,
     dim3 block(block_size_x, block_size_y);
     dim3 grid (std::ceil((float)n               / block_size_x / 2),
                std::ceil((float)m * batches     / block_size_y));
-    cudaMemset(bia_grd.first<DEV>(), 0, sizeof(float) * m * batches);
+//    cudaMemset(bia_grd.first<DEV>(), 0, sizeof(float) * m * batches);
     reduce_row<<<grid, block>>>(
         out_grd.first<DEV>(),
         bia_grd.first<DEV>(),
