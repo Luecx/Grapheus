@@ -159,6 +159,16 @@ struct ChessModel : nn::Model {
                 std::cout << " ......... " << max_values[i](max_values.size()-1);
             }
 
+            std::cout << "\n";
+            float min =  10000000;
+            float max = -10000000;
+            for(int m =0; m < min_values.size(); m++){
+                min = std::min(min, min_values[i](m));
+                max = std::max(max, max_values[i](m));
+            }
+            std::cout << "output bounds: [" << min << " ; " << max << "]\n";
+
+
             int died = 0;
             for(int j = 0; j < max_values[i].size(); j++){
                 if(std::abs(max_values[i](j) - min_values[i](j)) < 1e-8){
@@ -166,7 +176,6 @@ struct ChessModel : nn::Model {
                 }
             }
 
-            std::cout << "\n";
             std::cout << "died: " << died << " / " << max_values[i].size();
             std::cout << "\n";
 
@@ -213,14 +222,14 @@ struct KoiModel : ChessModel {
                            0.999,
                            1e-8));
 
-        set_file_output("../res/run4/");
+        set_file_output("../res/test/");
         add_quantization(Quantizer {
             "quant_1",
             10,
-            QuantizerEntry<int16_t>(&ft->weights.values, 16, true),
-            QuantizerEntry<int16_t>(&ft->bias.values   , 16),
-            QuantizerEntry<int16_t>(&af->weights.values, 256),
-            QuantizerEntry<int32_t>(&af->bias.values   , 256 * 16),
+            QuantizerEntry<int16_t>(&ft->weights.values, 32, true),
+            QuantizerEntry<int16_t>(&ft->bias.values   , 32),
+            QuantizerEntry<int16_t>(&af->weights.values, 128),
+            QuantizerEntry<int32_t>(&af->bias.values   , 128 * 32),
         });
         set_save_frequency(10);
     }
@@ -341,11 +350,13 @@ int main() {
     loader.start();
 
     KoiModel model {};
+    model.load_weights("../res/run4/weights/680.state");
+//    model.quantize("680_32_128.net");
 //    model.load_weights(R"(F:\OneDrive\ProgrammSpeicher\CLionProjects\CudAD\resources\runs\experiment_37\weights-epoch1000.nnue)");
-    model.train(loader, 1000, 1e8);
-//    model.distribution(loader, 32);
+//    model.train(loader, 1000, 1e8);
+    model.distribution(loader, 32);
 
-    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 //    model.compile(16384);
 //    model.setup_inputs_and_outputs(loader.next());
 //    model.batch();
