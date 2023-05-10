@@ -8,7 +8,7 @@
 #include <fstream>
 
 namespace dataset {
-inline uint64_t convertTxtToBin(std::string input, std::string output) {
+inline uint64_t convert_text_to_bin(std::string input, std::string output) {
     std::ifstream                     filestream(input, std::ios::in);
     std::string                       line;
     dataset::DataSet<chess::Position> positions {};
@@ -50,6 +50,7 @@ inline void print_usage() {
     std::cout << "USAGE: subcommand <args>\n\n\n";
     std::cout << "List of available commands: \n";
     print_convert_usage();
+    print_convert_multiple_usage
     print_shuffle_usage();
 }
 
