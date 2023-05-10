@@ -31,9 +31,9 @@ $(OBJDIR)/%.obj: $(SRCDIR)/%.cu
 	@mkdir -p $(@D)
 	$(NVCC) $(NVCCFLAGS) -c $< -o $@
 
-util: -DUTILITIES $(OBJS)
+util: $(OBJS)
 	@mkdir -p $(@D)
-	$(NVCC) $(NVCCFLAGS) $^ $(LIBS) -o $(EXE)
+	$(NVCC) $(NVCCFLAGS) -DUTILITIES $^ $(LIBS) -o $(EXE)
 
 clean:
 	rm -rf $(OBJDIR) $(BINDIR)
