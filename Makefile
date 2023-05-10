@@ -24,17 +24,17 @@ EXE  := $(BINDIR)/Grapheus
 build: $(EXE)
 
 $(EXE): $(OBJS)
-    @mkdir -p $(@D)
-    $(NVCC) $(NVCCFLAGS) $^ $(LIBS) -o $(EXE)
+	@mkdir -p $(@D)
+	$(NVCC) $(NVCCFLAGS) $^ $(LIBS) -o $(EXE)
 
 $(OBJDIR)/%.obj: $(SRCDIR)/%.cu
-    @mkdir -p $(@D)
-    $(NVCC) $(NVCCFLAGS) -c $< -o $@
+	@mkdir -p $(@D)
+	$(NVCC) $(NVCCFLAGS) -c $< -o $@
 
 util: NVCCFLAGS += -DUTILITIES
 util: $(OBJS)
-    @mkdir -p $(@D)
-    $(NVCC) $(NVCCFLAGS) $^ $(LIBS) -o $(EXE)_util
+	@mkdir -p $(@D)
+	$(NVCC) $(NVCCFLAGS) $^ $(LIBS) -o $(EXE)
 
 clean:
-    rm -rf $(OBJDIR) $(BINDIR)
+	rm -rf $(OBJDIR) $(BINDIR)
