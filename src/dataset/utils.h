@@ -44,7 +44,7 @@ inline uint64_t convert_text_to_bin(std::string input, std::string output) {
 
             positions.shuffle();
 
-            dataset::write(output + std::stoi(batch_no), positions);
+            dataset::write(output + std::to_string(batch_no), positions);
         }
     }
 
