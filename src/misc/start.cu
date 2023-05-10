@@ -49,11 +49,11 @@ void display_header() {
 
 void init() {
     cublasCreate(&CUBLAS_HANDLE);
-    cusparseCreate(&CUSPARSE_HANDLE);
+    // cusparseCreate(&CUSPARSE_HANDLE);
     display_header();
 }
 
 void close() {
     cublasDestroy(CUBLAS_HANDLE);
-    cusparseDestroy(CUSPARSE_HANDLE);
+    // cusparseDestroy(CUSPARSE_HANDLE);
 }
