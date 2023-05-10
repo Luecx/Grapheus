@@ -111,7 +111,7 @@ inline void start_utils(int argc, const char* argv[]) {
 
                 std::string out_path  = out_dir + file.path().filename().string() + ".bin";
 
-                position_count += convertTxtToBin(file_path, out_path);
+                position_count += convert_text_to_bin(file_path, out_path);
                 count++;
             }
         }
