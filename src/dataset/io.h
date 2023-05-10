@@ -60,7 +60,7 @@ inline void write(const std::string& file, const DataSet<TYPE>& data_set, uint64
     constexpr uint64_t CHUNK_SIZE = (1 << 20);
 
     // open the file
-    FILE* f = fopen(file.c_str(), "wba+");
+    FILE* f = fopen(file.c_str(), "wb");
     if (f == nullptr) {
         return;
     }

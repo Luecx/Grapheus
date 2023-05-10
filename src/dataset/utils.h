@@ -7,52 +7,28 @@
 #include <chrono>
 #include <fstream>
 
+
 namespace dataset {
 inline uint64_t convert_text_to_bin(std::string input, std::string output) {
 
-    constexpr uint64_t                     READ_CHUNK_SIZE = 300'000'000;
-
     std::ifstream                     filestream(input, std::ios::in);
     std::string                       line;
-
-    uint64_t entries;
+    dataset::DataSet<chess::Position> positions {};
 
     if (!filestream) {
         std::cout << "couldn't find file" << std::endl;
     } else {
-
-        bool end_reached = false;
-        uint64_t batch_no = 0;
-
-        while (!end_reached) {
-            dataset::DataSet<chess::Position> positions {};
-
-            for (int i = 0; i < READ_CHUNK_SIZE; i++){
-                std::getline(filestream, line);
-
-                if (filestream.eof()) {
-                    std::cout << "File end reached!" << std::endl;
-                    end_reached = true;
-                    filestream.close();
-                    break;
-                }
-
-                chess::Position pos = chess::parse_fen(line);
-                positions.positions.push_back(pos);
-                positions.header.entry_count++;
-            }
-
-            batch_no++;
-
-            entries += positions.header.entry_count;
-
-            positions.shuffle();
-
-            dataset::write(output, positions);
+        
+        while (std::getline(filestream, line)) {
+            chess::Position pos = chess::parse_fen(line);
+            positions.positions.push_back(pos);
+            positions.header.entry_count++;
         }
+
+        dataset::write(output, positions);
     }
 
-    return entries;
+    return positions.header.entry_count;
 }
 
 inline void print_convert_usage() {
@@ -101,10 +77,9 @@ inline void start_utils(int argc, const char* argv[]) {
             return;
         }
 
-        auto     start = std::chrono::high_resolution_clock::now();
-        uint64_t positions_convreted =
-            convert_text_to_bin(std::string {argv[2]}, std::string {argv[3]});
-        auto end      = std::chrono::high_resolution_clock::now();
+        auto     start               = std::chrono::high_resolution_clock::now();
+        uint64_t positions_convreted = convert_text_to_bin(std::string {argv[2]}, std::string {argv[3]});
+        auto     end                 = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
         std::cout << "Sucessfully converted " << positions_convreted << "!" << std::endl;
