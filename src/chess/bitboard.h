@@ -103,8 +103,7 @@ inline Square msb(BB b)
  * returns the index of the nth set bit, starting at the lsb
  * @param bb
  * @return
- */
-inline Square nlsb(BB bb, Square n) {
+ */inline Square nlsb(BB bb, Square n) {
 // https://stackoverflow.com/questions/7669057/find-nth-set-bit-in-an-int
 #ifdef __BMI2__
     return lsb(__builtin_ia32_pdep_di(1ULL << n, bb));
@@ -143,6 +142,7 @@ inline Square nlsb(BB bb, Square n) {
 
 #endif
 }
+
 
 /**
  * counts the ones inside the bitboard before the given index
