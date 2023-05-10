@@ -75,7 +75,7 @@ inline void start_utils(int argc, const char* argv[]) {
         }
 
         auto     start               = std::chrono::high_resolution_clock::now();
-        uint64_t positions_convreted = convertTxtToBin(std::string {argv[2]}, std::string {argv[3]});
+        uint64_t positions_convreted = convert_text_to_bin(std::string {argv[2]}, std::string {argv[3]});
         auto     end                 = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
