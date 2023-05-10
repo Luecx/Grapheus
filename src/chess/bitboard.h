@@ -74,14 +74,14 @@ inline Square msb(BB b)
 
 #ifdef _WIN64 // MSVC, WIN64
 #include <intrin.h>
-inline Square lsb(U64 b)
+inline Square lsb(BB b)
 {
     unsigned long idx;
     _BitScanForward64(&idx, b);
     return (Square)idx;
 }
 
-inline Square msb(U64 b)
+inline Square msb(BB b)
 {
     unsigned long idx;
     _BitScanReverse64(&idx, b);
