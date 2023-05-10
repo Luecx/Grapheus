@@ -15,6 +15,8 @@ inline uint64_t convert_text_to_bin(std::string input, std::string output) {
     std::ifstream                     filestream(input, std::ios::in);
     std::string                       line;
 
+    uint64_t entries;
+
     if (!filestream) {
         std::cout << "couldn't find file" << std::endl;
     } else {
@@ -42,13 +44,15 @@ inline uint64_t convert_text_to_bin(std::string input, std::string output) {
 
             batch_no++;
 
+            entries += positions.header.entry_count;
+
             positions.shuffle();
 
             dataset::write(output + std::to_string(batch_no), positions);
         }
     }
 
-    return positions.header.entry_count;
+    return entries;
 }
 
 inline void print_convert_usage() {
