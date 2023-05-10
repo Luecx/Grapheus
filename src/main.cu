@@ -4,6 +4,7 @@
 #include "dataset/dataset.h"
 #include "dataset/io.h"
 #include "dataset/process.h"
+#include "dataset/utils.h"
 #include "misc/csv.h"
 #include "misc/timer.h"
 #include "nn/nn.h"
@@ -338,7 +339,10 @@ struct KoiModel : ChessModel {
     }
 };
 
-int main() {
+int main(int argc, const char* argv[]) {
+#ifdef UTILITIES
+    dataset::start_utils(argc, argv);
+#else
     init();
     std::vector<std::string> files {};
 
@@ -386,5 +390,6 @@ int main() {
     loader.kill();
 
     close();
+#endif
     return 0;
 }
