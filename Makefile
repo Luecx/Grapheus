@@ -5,7 +5,7 @@
 NVCC = nvcc
 CXX = g++
 CXXFLAGS = -std=c++17 -fopenmp -stdlib=libc++
-NVCCFLAGS = -use_fast_math -O3 -DNDEBUG --compiler-options -std=c++17
+NVCCFLAGS = -use_fast_math -O3 -DNDEBUG -std=c++17
 
 # Libraries
 LIBS = -lcublas
@@ -21,19 +21,20 @@ OBJS := $(SRCS:$(SRCDIR)/%.cu=$(OBJDIR)/%.obj)
 EXE  := $(BINDIR)/Grapheus
 
 # Targets
-all: $(EXE)
+build: $(EXE)
 
 $(EXE): $(OBJS)
-	@mkdir -p $(@D)
-	$(NVCC) $(NVCCFLAGS) $^ $(LIBS) -o $(EXE)
+    @mkdir -p $(@D)
+    $(NVCC) $(NVCCFLAGS) $^ $(LIBS) -o $(EXE)
 
 $(OBJDIR)/%.obj: $(SRCDIR)/%.cu
-	@mkdir -p $(@D)
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+    @mkdir -p $(@D)
+    $(NVCC) $(NVCCFLAGS) -c $< -o $@
 
+util: NVCCFLAGS += -DUTILITIES
 util: $(OBJS)
-	@mkdir -p $(@D)
-	$(NVCC) $(NVCCFLAGS) -DUTILITIES $^ $(LIBS) -o $(EXE)
+    @mkdir -p $(@D)
+    $(NVCC) $(NVCCFLAGS) $^ $(LIBS) -o $(EXE)_util
 
 clean:
-	rm -rf $(OBJDIR) $(BINDIR)
+    rm -rf $(OBJDIR) $(BINDIR)
