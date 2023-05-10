@@ -3,6 +3,10 @@
 
 #include <iostream>
 
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
+
 namespace chess{
 
 /**
@@ -11,9 +15,9 @@ namespace chess{
  * @return
  */
 inline int popcount(BB bb) { 
-#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
+#if defined(_MSC_VER) 
 
-    return (uint8_t)_mm_popcnt_u64(bb);
+    return (uint8_t)__popcnt64(bb);
 
 #else
 
@@ -73,7 +77,6 @@ inline Square msb(BB b)
 #elif defined(_MSC_VER) // MSVC
 
 #ifdef _WIN64 // MSVC, WIN64
-#include <intrin.h>
 inline Square lsb(BB b)
 {
     unsigned long idx;
