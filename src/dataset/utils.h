@@ -40,11 +40,11 @@ inline uint64_t convert_text_to_bin(std::string input, std::string output) {
                 positions.header.entry_count++;
             }
 
-            chunk_no++;
+            batch_no++;
 
             positions.shuffle();
 
-            dataset::write(output + std::stoi(chunk_no), positions);
+            dataset::write(output + std::stoi(batch_no), positions);
         }
     }
 
