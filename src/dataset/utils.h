@@ -50,7 +50,7 @@ inline void print_usage() {
     std::cout << "USAGE: subcommand <args>\n\n\n";
     std::cout << "List of available commands: \n";
     print_convert_usage();
-    print_convert_multiple_usage
+    print_convert_multiple_usage();
     print_shuffle_usage();
 }
 
