@@ -35,13 +35,11 @@ struct ChessModel : nn::Model {
             float  batch_loss    = 0;
             float  epoch_loss    = 0;
 
-            // get the next dataset and set it up while the other things
-            // are running on the gpu
-            auto* ds = loader.next();
-
             for (int b = 0; b < epoch_size / loader.batch_size; b++) {
-                setup_inputs_and_outputs(ds);
+                // get the next dataset and set it up while the other things
+                // are running on the gpu
                 ds = loader.next();
+                setup_inputs_and_outputs(ds);
 
                 // print score of last iteration
                 if (b > 0) {
