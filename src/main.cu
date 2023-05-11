@@ -439,8 +439,7 @@ struct PerspectiveModel : ChessModel {
 
         auto& target = m_loss->target;
 
-#pragma omp parallel for schedule(static) num_threads(16)
-        std::cout << omp_omp_get_thread_num() << std::endl;
+#pragma omp parallel for schedule(dynamic, 4) num_threads(8)
         for (int b = 0; b < positions->header.entry_count; b++) {
             chess::Position* pos = &positions->positions[b];
             // fill in the inputs and target values
