@@ -12,6 +12,7 @@
 
 #include <fstream>
 #include <filesystem>
+#include "omp.h"
 
 using namespace nn;
 using namespace data;
@@ -34,11 +35,13 @@ struct ChessModel : nn::Model {
             float  batch_loss    = 0;
             float  epoch_loss    = 0;
 
+            // get the next dataset and set it up while the other things
+            // are running on the gpu
+            auto* ds = loader.next();
+
             for (int b = 0; b < epoch_size / loader.batch_size; b++) {
-                // get the next dataset and set it up while the other things
-                // are running on the gpu
-                auto* ds = loader.next();
                 setup_inputs_and_outputs(ds);
+                ds = loader.next();
 
                 // print score of last iteration
                 if (b > 0) {
@@ -437,6 +440,7 @@ struct PerspectiveModel : ChessModel {
         auto& target = m_loss->target;
 
 #pragma omp parallel for schedule(static) num_threads(16)
+        std::cout << omp_omp_get_thread_num() << std::endl;
         for (int b = 0; b < positions->header.entry_count; b++) {
             chess::Position* pos = &positions->positions[b];
             // fill in the inputs and target values
@@ -499,7 +503,7 @@ int main(int argc, const char* argv[]) {
 
     PerspectiveModel<512> model{};
 
-    model.train(loader, 100, 1e6);
+    model.train(loader, 100, 5e7);
     
     loader.kill();
 
