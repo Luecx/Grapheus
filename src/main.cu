@@ -11,6 +11,7 @@
 #include "operations/operations.h"
 
 #include <fstream>
+#include <filesystem>
 
 using namespace nn;
 using namespace data;
@@ -489,47 +490,17 @@ int main(int argc, const char* argv[]) {
     init();
     std::vector<std::string> files {};
 
-    for (int i = 1; i <= 32; i++) {
-        files.push_back(R"(D:\Koivisto Resourcen\Training Data Shuffled + Berserk\koi_ber_)"
-                        + std::to_string(i) + ".bin");
+    for (auto& file : std::filesystem::recursive_directory_iterator(R"(/workspace/Data/)")){
+        files.push_back(file.path().string());
     }
+    
     dataset::BatchLoader<chess::Position> loader {files, 16384};
     loader.start();
 
-    KoiModel model {};
-    model.load_weights("../res/run4/weights/680.state");
-//    model.quantize("680_32_128.net");
-//    model.load_weights(R"(F:\OneDrive\ProgrammSpeicher\CLionProjects\CudAD\resources\runs\experiment_37\weights-epoch1000.nnue)");
-//    model.train(loader, 1000, 1e8);
-    model.distribution(loader, 32);
+    PerspectiveModel<512> model{};
 
-//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-//    model.compile(16384);
-//    model.setup_inputs_and_outputs(loader.next());
-//    model.batch();
-//    std::cout << model.loss_of_last_batch() << std::endl;
-
-
-
-//    model.load_weights("../res/run1/weights/test.state");
-//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-//    model.train(loader, 1000, 1e8);
-//    model.load_weights("../res/run2/weights/1000.state");
-//    model.distribution(loader);
-//    model.quantize("final_16_256.net");
-
-//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-//    model.save_weights("../res/run1/weights/test.state");
-
-//    model.compile(1);
-//    model.load_weights(R"(C:\Users\Luecx\CLionProjects\Grapheus\res\run1\weights\300.state)");
-//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-//
-//    model.load_weights(R"(C:\Users\Luecx\CLionProjects\Grapheus\res\run1\weights\200.state)");
-//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-
-
-//    model.train(loader, 1000, 1e8);
+    model.train(loader, 100, 1e6);
+    
     loader.kill();
 
     close();
