@@ -437,7 +437,8 @@ struct PerspectiveModel : ChessModel {
 
         auto& target = m_loss->target;
 
-#pragma omp parallel for schedule(dynamic, 4) num_threads(8)
+
+#pragma omp parallel for schedule(static, 4) num_threads(8)
         for (int b = 0; b < positions->header.entry_count; b++) {
             chess::Position* pos = &positions->positions[b];
             // fill in the inputs and target values
@@ -481,6 +482,7 @@ struct PerspectiveModel : ChessModel {
 
             target(b)      = (p_target + w_target) / 2.0f;
         }
+        std::cout << target.value << std::endl;
     }
 };
 
@@ -501,9 +503,18 @@ int main(int argc, const char* argv[]) {
     dataset::BatchLoader<chess::Position> loader {files, 16384};
     loader.start();
 
+    auto* ds = loader.next();
+
+    for (auto& pos : ds->positions){
+        std::cout << "WDL: " << int(pos.m_result.wdl) << std::endl;
+        std::cout << "Score: " << int(pos.m_result.score) << std::endl;
+        std::cout << "Piece count: " << pos.piece_count() << std::endl;
+        std::cout << std::endl;
+    }
+
     PerspectiveModel<512> model{};
 
-    model.train(loader, 100, 5e7);
+    // model.train(loader, 100, 5e7);
     
     loader.kill();
 

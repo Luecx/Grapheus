@@ -42,7 +42,7 @@ DataSet<TYPE> read(const std::string& file, uint64_t count = (1ULL << 54)) {
         int end   = c * CHUNK_SIZE + CHUNK_SIZE;
         if (end > data_set.positions.size())
             end = data_set.positions.size();
-        fread(&data_set.positions[start], sizeof(DataSetEntry), end - start, f);
+        fread(&data_set.positions[start], sizeof(TYPE), end - start, f);
         printf("\r[Reading positions] Current count=%d", end);
         fflush(stdout);
     }
@@ -84,6 +84,7 @@ inline void write(const std::string& file, const DataSet<TYPE>& data_set, uint64
         int end   = c * CHUNK_SIZE + CHUNK_SIZE;
         if (end > data_set.positions.size())
             end = data_set.positions.size();
+
         fwrite(&data_set.positions[start], sizeof(TYPE), end - start, f);
         printf("\r[Writing positions] Current count=%d", end);
         fflush(stdout);
