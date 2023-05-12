@@ -146,7 +146,7 @@ inline void start_utils(int argc, const char* argv[]) {
 
         auto start = std::chrono::high_resolution_clock::now();
 
-        dataset::mix_and_shuffle_2<dataset::DataSetEntry>(input_files,
+        dataset::mix_and_shuffle_2<chess::Position>(input_files,
                                                           std::string {argv[3]},
                                                           std::stoi(argv[4]));
 

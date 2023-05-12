@@ -489,6 +489,9 @@ int main(int argc, const char* argv[]) {
     dataset::start_utils(argc, argv);
 #else
     init();
+
+    
+
     std::vector<std::string> files {};
 
     for (auto& file : std::filesystem::recursive_directory_iterator(R"(/workspace/Data/)")){
