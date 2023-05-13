@@ -372,8 +372,8 @@ struct PerspectiveModel : ChessModel {
             "quant_1",
             10,
             QuantizerEntry<int16_t>(&ft->weights.values, 32, true),
-            QuantizerEntry<int16_t>(&af->weights.values, 128),
             QuantizerEntry<int16_t>(&ft->bias.values   , 32),
+            QuantizerEntry<int16_t>(&af->weights.values, 128),
             QuantizerEntry<int32_t>(&af->bias.values   , 128 * 32),
         });
         set_save_frequency(10);
@@ -491,30 +491,19 @@ int main(int argc, const char* argv[]) {
     dataset::start_utils(argc, argv);
 #else
     init();
-
     
-
     std::vector<std::string> files {};
 
-    for (auto& file : std::filesystem::recursive_directory_iterator(R"(/workspace/Data/)")){
+    for (auto& file : std::filesystem::recursive_directory_iterator(R"(/workspace/Shuffled/)")){
         files.push_back(file.path().string());
     }
     
     dataset::BatchLoader<chess::Position> loader {files, 16384};
     loader.start();
 
-    auto* ds = loader.next();
-
-    for (auto& pos : ds->positions){
-        std::cout << "WDL: " << int(pos.m_result.wdl) << std::endl;
-        std::cout << "Score: " << int(pos.m_result.score) << std::endl;
-        std::cout << "Piece count: " << pos.piece_count() << std::endl;
-        std::cout << std::endl;
-    }
-
     PerspectiveModel<512> model{};
 
-    // model.train(loader, 100, 5e7);
+    model.train(loader, 1000, 1e8);
     
     loader.kill();
 
