@@ -371,10 +371,10 @@ struct PerspectiveModel : ChessModel {
         add_quantization(Quantizer {
             "quant_1",
             10,
-            QuantizerEntry<int16_t>(&ft->weights.values, 32, true),
-            QuantizerEntry<int16_t>(&ft->bias.values   , 32),
-            QuantizerEntry<int16_t>(&af->weights.values, 128),
-            QuantizerEntry<int32_t>(&af->bias.values   , 128 * 32),
+            QuantizerEntry<int16_t>(&ft->weights.values, 255, true),
+            QuantizerEntry<int16_t>(&ft->bias.values   , 255),
+            QuantizerEntry<int16_t>(&af->weights.values, 64),
+            QuantizerEntry<int32_t>(&af->bias.values   , 255 * 64),
         });
         set_save_frequency(10);
     }
