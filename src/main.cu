@@ -482,7 +482,6 @@ struct PerspectiveModel : ChessModel {
 
             target(b)      = (p_target + w_target) / 2.0f;
         }
-        std::cout << target.value << std::endl;
     }
 };
 
@@ -491,7 +490,7 @@ int main(int argc, const char* argv[]) {
     dataset::start_utils(argc, argv);
 #else
     init();
-    
+
     std::vector<std::string> files {};
 
     for (auto& file : std::filesystem::recursive_directory_iterator(R"(/workspace/Shuffled/)")){
