@@ -367,11 +367,11 @@ struct PerspectiveModel : ChessModel {
                            0.999,
                            1e-8));
 
-        set_file_output("../res/test/");
+        set_file_output("../test/output/");
         add_quantization(Quantizer {
             "quant_1",
             10,
-            QuantizerEntry<int16_t>(&ft->weights.values, 255, true),
+            QuantizerEntry<int16_t>(&ft->weights.values, 255),
             QuantizerEntry<int16_t>(&ft->bias.values   , 255),
             QuantizerEntry<int16_t>(&af->weights.values, 64),
             QuantizerEntry<int32_t>(&af->bias.values   , 255 * 64),
@@ -502,8 +502,11 @@ int main(int argc, const char* argv[]) {
 
     PerspectiveModel<512> model{};
 
-    model.train(loader, 1000, 1e8);
-    
+    model.load_weights("../res/test/weights/440.state");
+    model.quantize();
+
+    // model.train(loader, 1000, 1e8);
+
     loader.kill();
 
     close();
