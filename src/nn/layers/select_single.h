@@ -33,7 +33,7 @@ struct SelectSingle : Layer {
     void backward() override {
         operations::select_single_bp<data::GPU>(prev->dense_output.gradients,
                                                 dense_output.gradients,
-                                                indices->dense_output.gradients);
+                                                indices->dense_output.values);
     }
 };
 

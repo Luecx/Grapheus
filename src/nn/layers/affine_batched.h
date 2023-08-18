@@ -32,7 +32,7 @@ struct AffineBatched : public nn::Layer {
 //        math::uniform(weights.values, -stdv, stdv );
 //        math::uniform(bias   .values, -stdv, stdv );
 
-        float stdv = sqrt(2.0f / (float)prev->size);
+        float stdv = sqrt(2.0f / (float)(prev->size / batches));
         math::normal(weights.values, 0.0f, stdv );
 
         weights.values >> data::GPU;
