@@ -232,10 +232,10 @@ struct BerserkModel : ChessModel {
         auto output = add<Sigmoid>(l3, sigmoid_scale);
 
         // Mean power error
-        set_loss(MPE {2.5, false});
+        set_loss(MPE {2.5, true});
 
         // Steady LR decay
-        set_lr_schedule(StepDecayLRSchedule {0, 0.025, 1000});
+        set_lr_schedule(StepDecayLRSchedule {5e-3, 0.025, 1000});
 
         add_optimizer(Adam({{OptimizerEntry {&ft->weights}.clamp(-1024, 1024)},
                             {OptimizerEntry {&ft->bias}},
@@ -369,7 +369,7 @@ int main() {
     loader.start();
 
     BerserkModel model {};
-    model.train(loader, 1, 16384);
+    model.train(loader, 1500, 1e8);
 
     loader.kill();
 
