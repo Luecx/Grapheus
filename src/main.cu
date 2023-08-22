@@ -68,11 +68,11 @@ struct ChessModel : nn::Model {
         }
     }
 
-    void test_fen(const std::string& fen){
+    void test_fen(const std::string& fen) {
         this->compile(1);
 
-        chess::Position pos = chess::parse_fen(fen);
-        dataset::DataSet<chess::Position> ds{};
+        chess::Position                   pos = chess::parse_fen(fen);
+        dataset::DataSet<chess::Position> ds {};
         ds.positions.push_back(pos);
         ds.header.entry_count = 1;
 
@@ -85,37 +85,38 @@ struct ChessModel : nn::Model {
 
         // go through the layers and download values
 
-        std::cout << "==================================================================================\n";
+        std::cout
+            << "==================================================================================\n";
         std::cout << "testing fen: " << fen << std::endl;
 
         int idx = 0;
-        for(auto layer:m_layers){
+        for (auto layer : m_layers) {
             layer->dense_output.values >> CPU;
 
             std::cout << "LAYER " << ++idx << std::endl;
-            for(int i = 0; i < std::min((size_t)16, layer->size); i++){
+            for (int i = 0; i < std::min((size_t) 16, layer->size); i++) {
                 std::cout << std::setw(10) << layer->dense_output.values(i, 0);
             }
-            if(layer->size > 16){
+            if (layer->size > 16) {
                 std::cout << " ......... " << layer->dense_output.values(layer->size - 1, 0);
             }
             std::cout << "\n";
         }
     }
 
-    void distribution(dataset::BatchLoader<chess::Position>& loader, int batches = 32){
+    void distribution(dataset::BatchLoader<chess::Position>& loader, int batches = 32) {
         this->compile(loader.batch_size);
 
-        std::vector<DenseMatrix<float>> max_values{};
-        std::vector<DenseMatrix<float>> min_values{};
+        std::vector<DenseMatrix<float>> max_values {};
+        std::vector<DenseMatrix<float>> min_values {};
 
-        for(auto l:m_layers){
+        for (auto l : m_layers) {
             max_values.emplace_back(l->dense_output.values.m, 1);
             min_values.emplace_back(l->dense_output.values.m, 1);
             max_values.back().malloc<data::CPU>();
             min_values.back().malloc<data::CPU>();
             math::uniform(max_values.back(), -1000000.0f, -1000000.0f);
-            math::uniform(min_values.back(),  1000000.0f,  1000000.0f);
+            math::uniform(min_values.back(), 1000000.0f, 1000000.0f);
         }
 
         for (int b = 0; b < batches; b++) {
@@ -126,128 +127,155 @@ struct ChessModel : nn::Model {
             std::cout << "\r" << b << " / " << batches << std::flush;
 
             // get minimum and maximum values
-            for(int i = 0; i < m_layers.size(); i++) {
+            for (int i = 0; i < m_layers.size(); i++) {
                 auto layer = m_layers[i].get();
                 layer->dense_output.values >> data::CPU;
-                for(int m =0; m < layer->dense_output.values.m; m++){
-                    for(int n =0; n < layer->dense_output.values.n; n++){
-                        max_values[i](m,0) = std::max(max_values[i](m,0),  layer->dense_output.values(m,n));
-                        min_values[i](m,0) = std::min(min_values[i](m,0),  layer->dense_output.values(m,n));
+                for (int m = 0; m < layer->dense_output.values.m; m++) {
+                    for (int n = 0; n < layer->dense_output.values.n; n++) {
+                        max_values[i](m, 0) =
+                            std::max(max_values[i](m, 0), layer->dense_output.values(m, n));
+                        min_values[i](m, 0) =
+                            std::min(min_values[i](m, 0), layer->dense_output.values(m, n));
                     }
                 }
             }
         }
         std::cout << std::endl;
 
-
-        for(int i = 0; i < m_layers.size(); i++) {
-            std::cout << "------------ LAYER " << i+1 << " --------------------" << std::endl;
+        for (int i = 0; i < m_layers.size(); i++) {
+            std::cout << "------------ LAYER " << i + 1 << " --------------------" << std::endl;
             std::cout << "min: ";
-            for(int j = 0; j < std::min((size_t)16, min_values[i].size()); j++){
+            for (int j = 0; j < std::min((size_t) 16, min_values[i].size()); j++) {
                 std::cout << std::setw(10) << min_values[i](j);
             }
-            if(min_values[i].size() > 16){
-                std::cout << " ......... " << min_values[i](min_values.size()-1);
+            if (min_values[i].size() > 16) {
+                std::cout << " ......... " << min_values[i](min_values.size() - 1);
             }
             std::cout << "\n";
 
             std::cout << "max: ";
-            for(int j = 0; j < std::min((size_t)16, max_values[i].size()); j++){
+            for (int j = 0; j < std::min((size_t) 16, max_values[i].size()); j++) {
                 std::cout << std::setw(10) << max_values[i](j);
             }
-            if(max_values[i].size() > 16){
-                std::cout << " ......... " << max_values[i](max_values.size()-1);
+            if (max_values[i].size() > 16) {
+                std::cout << " ......... " << max_values[i](max_values.size() - 1);
             }
 
             std::cout << "\n";
-            float min =  10000000;
+            float min = 10000000;
             float max = -10000000;
-            for(int m =0; m < min_values.size(); m++){
+            for (int m = 0; m < min_values.size(); m++) {
                 min = std::min(min, min_values[i](m));
                 max = std::max(max, max_values[i](m));
             }
             std::cout << "output bounds: [" << min << " ; " << max << "]\n";
 
-
             int died = 0;
-            for(int j = 0; j < max_values[i].size(); j++){
-                if(std::abs(max_values[i](j) - min_values[i](j)) < 1e-8){
-                    died ++;
+            for (int j = 0; j < max_values[i].size(); j++) {
+                if (std::abs(max_values[i](j) - min_values[i](j)) < 1e-8) {
+                    died++;
                 }
             }
 
             std::cout << "died: " << died << " / " << max_values[i].size();
             std::cout << "\n";
 
-            for(auto p : m_layers[i]->params()){
-                float min =  10000000;
+            for (auto p : m_layers[i]->params()) {
+                float min = 10000000;
                 float max = -10000000;
-                for(int m =0; m < p->values.m; m++){
-                    for(int n =0; n < p->values.n; n++){
-                        min = std::min(min, p->values(m,n));
-                        max = std::max(max, p->values(m,n));
+                for (int m = 0; m < p->values.m; m++) {
+                    for (int n = 0; n < p->values.n; n++) {
+                        min = std::min(min, p->values(m, n));
+                        max = std::max(max, p->values(m, n));
                     }
                 }
 
                 std::cout << "param bounds: [" << min << " ; " << max << "]\n";
             }
-
         }
-
     }
 };
 
-struct KoiModel : ChessModel {
-    static constexpr int THREADS = 16;    // threads to use on the cpu
+struct BerserkModel : ChessModel {
+    SparseInput* in1;
+    SparseInput* in2;
 
-    SparseInput*         in1;
-    SparseInput*         in2;
+    DenseInput*  layer_selector;
 
-    KoiModel() : ChessModel() {
-        in1     = add<SparseInput>(16 * 12 * 64, 32);
-        in2     = add<SparseInput>(16 * 12 * 64, 32);
+    const float  sigmoid_scale = 1.0 / 160.0;
+    const float  quant_one     = 64.0;
+    const float  quant_two     = 32.0;
 
-        auto ft = add<FeatureTransformer>(in1, in2, 512);
-        auto re = add<ReLU>(ft);
-        auto af = add<Affine>(re, 1);
-        auto sm = add<Sigmoid>(af, 2.5 / 400);
+    const size_t n_features    = 16 * 12 * 64;
+    const size_t n_ft          = 768;
+    const size_t n_l1          = 8;
+    const size_t n_l2          = 32;
+    const size_t n_out         = 1;
 
+    BerserkModel()
+        : ChessModel() {
+
+        in1 = add<SparseInput>(n_features, 32);
+        in2 = add<SparseInput>(n_features, 32);
+
+        auto ft = add<FeatureTransformer>(in1, in2, n_ft);
+        ft->ft_regularization = 1.0 / 16384.0 / 4194304.0;
+        auto fta = add<ReLU>(ft);
+
+        auto l1  = add<Affine>(fta, n_l1);
+        auto l1a = add<ReLU>(l1);
+
+        auto l2  = add<Affine>(l1a, n_l2);
+        auto l2a = add<ReLU>(l2);
+
+        auto l3  = add<Affine>(l2a, n_out);
+        auto output = add<Sigmoid>(l3, sigmoid_scale);
+
+        // Mean power error
         set_loss(MPE {2.5, false});
-        set_lr_schedule(StepDecayLRSchedule {0.01, 0.3, 100});
-        add_optimizer(Adam({{OptimizerEntry {&ft->weights}},
+
+        // Steady LR decay
+        set_lr_schedule(StepDecayLRSchedule {0, 0.025, 1000});
+
+        add_optimizer(Adam({{OptimizerEntry {&ft->weights}.clamp(-1024, 1024)},
                             {OptimizerEntry {&ft->bias}},
-                            {OptimizerEntry {&af->weights}},
-                            {OptimizerEntry {&af->bias}}},
-                           0.9,
+                            {OptimizerEntry {&l1->weights}.clamp(-3.96, 3.96)},
+                            {OptimizerEntry {&l1->bias}},
+                            {OptimizerEntry {&l2->weights}},
+                            {OptimizerEntry {&l2->bias}},
+                            {OptimizerEntry {&l3->weights}},
+                            {OptimizerEntry {&l3->bias}}},
+                           0.95,
                            0.999,
                            1e-8));
 
-        set_file_output("../res/test/");
+        set_file_output("C:/Programming/berserk-nets/g-exp300/");
         add_quantization(Quantizer {
-            "quant_1",
+            "" + std::to_string((int) quant_one) + "_" + std::to_string((int) quant_two),
             10,
-            QuantizerEntry<int16_t>(&ft->weights.values, 32, true),
-            QuantizerEntry<int16_t>(&ft->bias.values   , 32),
-            QuantizerEntry<int16_t>(&af->weights.values, 128),
-            QuantizerEntry<int32_t>(&af->bias.values   , 128 * 32),
+            QuantizerEntry<int16_t>(&ft->weights.values, quant_one, true),
+            QuantizerEntry<int16_t>(&ft->bias.values, quant_one),
+            QuantizerEntry<int8_t>(&l1->weights.values, quant_two),
+            QuantizerEntry<int32_t>(&l1->bias.values, quant_two),
+            QuantizerEntry<float>(&l2->weights.values, 1),
+            QuantizerEntry<float>(&l2->bias.values, quant_two),
+            QuantizerEntry<float>(&l3->weights.values, 1),
+            QuantizerEntry<float>(&l3->bias.values, quant_two),
         });
         set_save_frequency(10);
     }
 
-    inline int king_square_index(chess::Square relative_king_square) {
-
-        // clang-format off
-        constexpr int indices[chess::N_SQUARES] {
-            0,  1,  2,  3,  3,  2,  1,  0,
-            4,  5,  6,  7,  7,  6,  5,  4,
-            8,  9,  10, 11, 11, 10, 9,  8,
-            8,  9,  10, 11, 11, 10, 9,  8,
-            12, 12, 13, 13, 13, 13, 12, 12,
-            12, 12, 13, 13, 13, 13, 12, 12,
-            14, 14, 15, 15, 15, 15, 14, 14,
-            14, 14, 15, 15, 15, 15, 14, 14,
+    inline int king_square_index(int relative_king_square) {
+        constexpr int indices[64] {
+            -1, -1, -1, -1, 14, 14, 15, 15,    //
+            -1, -1, -1, -1, 14, 14, 15, 15,    //
+            -1, -1, -1, -1, 12, 12, 13, 13,    //
+            -1, -1, -1, -1, 12, 12, 13, 13,    //
+            -1, -1, -1, -1, 8,  9,  10, 11,    //
+            -1, -1, -1, -1, 8,  9,  10, 11,    //
+            -1, -1, -1, -1, 4,  5,  6,  7,     //
+            -1, -1, -1, -1, 0,  1,  2,  3,     //
         };
-        // clang-format on
 
         return indices[relative_king_square];
     }
@@ -256,33 +284,21 @@ struct KoiModel : ChessModel {
                      chess::Piece  piece,
                      chess::Square king_square,
                      chess::Color  view) {
-        constexpr int          PIECE_TYPE_FACTOR  = 64;
-        constexpr int          PIECE_COLOR_FACTOR = PIECE_TYPE_FACTOR * 6;
-        constexpr int          KING_SQUARE_FACTOR = PIECE_COLOR_FACTOR * 2;
 
-        const chess::PieceType piece_type         = chess::type_of(piece);
-        const chess::Color     piece_color        = chess::color_of(piece);
+        const chess::PieceType piece_type  = chess::type_of(piece);
+        const chess::Color     piece_color = chess::color_of(piece);
 
-        chess::Square          relative_king_square;
-        chess::Square          relative_piece_square;
+        piece_square ^= 56;
+        king_square ^= 56;
 
-        if (view == chess::WHITE) {
-            relative_king_square  = king_square;
-            relative_piece_square = piece_square;
-        } else {
-            relative_king_square  = chess::mirror_ver(king_square);
-            relative_piece_square = chess::mirror_ver(piece_square);
-        }
+        chess::Square relative_king_square;
+        chess::Square relative_piece_square;
 
-        const int king_square_idx = king_square_index(relative_king_square);
-        if (chess::file_index(king_square) > 3) {
-            relative_piece_square = chess::mirror_hor(relative_piece_square);
-        }
+        const int     oP  = piece_type + 6 * (piece_color != view);
+        const int     oK  = (7 * !(king_square & 4)) ^ (56 * view) ^ king_square;
+        const int     oSq = (7 * !(king_square & 4)) ^ (56 * view) ^ piece_square;
 
-        const int index = relative_piece_square + piece_type * PIECE_TYPE_FACTOR
-                          + (piece_color == view) * PIECE_COLOR_FACTOR
-                          + king_square_idx * KING_SQUARE_FACTOR;
-        return index;
+        return king_square_index(oK) * 12 * 64 + oP * 64 + oSq;
     }
 
     void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions) {
@@ -330,10 +346,13 @@ struct KoiModel : ChessModel {
                 w_value = -w_value;
             }
 
-            float p_target = 1 / (1 + expf(-p_value * 2.5 / 400));
+            float p_target = 1 / (1 + expf(-p_value * sigmoid_scale));
             float w_target = (w_value + 1) / 2.0f;
 
             target(b)      = (p_target + w_target) / 2.0f;
+
+            // layer_selector->dense_output.values(b, 0) =
+            //     (int) ((chess::popcount(pos->m_occupancy) - 1) / 4);
         }
     }
 };
@@ -342,47 +361,16 @@ int main() {
     init();
     std::vector<std::string> files {};
 
-    for (int i = 1; i <= 32; i++) {
-        files.push_back(R"(D:\Koivisto Resourcen\Training Data Shuffled + Berserk\koi_ber_)"
-                        + std::to_string(i) + ".bin");
+    for (int i = 1; i <= 200; i++) {
+        files.push_back("C:/Programming/berserk-data/exp203/exp203." + std::to_string(i) + ".bin");
     }
+
     dataset::BatchLoader<chess::Position> loader {files, 16384};
     loader.start();
 
-    KoiModel model {};
-    model.load_weights("../res/run4/weights/680.state");
-//    model.quantize("680_32_128.net");
-//    model.load_weights(R"(F:\OneDrive\ProgrammSpeicher\CLionProjects\CudAD\resources\runs\experiment_37\weights-epoch1000.nnue)");
-//    model.train(loader, 1000, 1e8);
-    model.distribution(loader, 32);
+    BerserkModel model {};
+    model.train(loader, 1, 16384);
 
-//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-//    model.compile(16384);
-//    model.setup_inputs_and_outputs(loader.next());
-//    model.batch();
-//    std::cout << model.loss_of_last_batch() << std::endl;
-
-
-
-//    model.load_weights("../res/run1/weights/test.state");
-//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-//    model.train(loader, 1000, 1e8);
-//    model.load_weights("../res/run2/weights/1000.state");
-//    model.distribution(loader);
-//    model.quantize("final_16_256.net");
-
-//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-//    model.save_weights("../res/run1/weights/test.state");
-
-//    model.compile(1);
-//    model.load_weights(R"(C:\Users\Luecx\CLionProjects\Grapheus\res\run1\weights\300.state)");
-//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-//
-//    model.load_weights(R"(C:\Users\Luecx\CLionProjects\Grapheus\res\run1\weights\200.state)");
-//    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-
-
-//    model.train(loader, 1000, 1e8);
     loader.kill();
 
     close();
