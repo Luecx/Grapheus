@@ -203,8 +203,9 @@ struct BerserkModel : ChessModel {
     DenseInput*  layer_selector;
 
     const float  sigmoid_scale = 1.0 / 160.0;
-    const float  quant_one     = 64.0;
-    const float  quant_two     = 32.0;
+    const float  quant_one     = 127.0;
+    const float  quant_two     = 64.0;
+    const float  nnue_scale    = 282.0;
 
     const size_t n_features    = 16 * 12 * 64;
     const size_t n_ft          = 768;
@@ -219,8 +220,7 @@ struct BerserkModel : ChessModel {
         in2 = add<SparseInput>(n_features, 32);
 
         auto ft = add<FeatureTransformer>(in1, in2, n_ft);
-        ft->ft_regularization = 1.0 / 16384.0 / 4194304.0;
-        auto fta = add<ReLU>(ft);
+        auto fta = add<ClippedRelu>(ft);
 
         auto l1  = add<Affine>(fta, n_l1);
         auto l1a = add<ReLU>(l1);
@@ -229,38 +229,40 @@ struct BerserkModel : ChessModel {
         auto l2a = add<ReLU>(l2);
 
         auto l3  = add<Affine>(l2a, n_out);
-        auto output = add<Sigmoid>(l3, sigmoid_scale);
+        auto output = add<Sigmoid>(l3, nnue_scale * sigmoid_scale);
 
         // Mean power error
         set_loss(MPE {2.5, true});
 
         // Steady LR decay
-        set_lr_schedule(StepDecayLRSchedule {5e-3, 0.025, 1000});
+        set_lr_schedule(StepDecayLRSchedule {1.75e-4, 0.025, 1000});
 
-        add_optimizer(Adam({{OptimizerEntry {&ft->weights}.clamp(-1024, 1024)},
+        const float hidden_max = quant_one / quant_two;
+
+        add_optimizer(Adam({{OptimizerEntry {&ft->weights}},
                             {OptimizerEntry {&ft->bias}},
-                            {OptimizerEntry {&l1->weights}.clamp(-3.96, 3.96)},
+                            {OptimizerEntry {&l1->weights}.clamp(-hidden_max, hidden_max)},
                             {OptimizerEntry {&l1->bias}},
                             {OptimizerEntry {&l2->weights}},
                             {OptimizerEntry {&l2->bias}},
                             {OptimizerEntry {&l3->weights}},
                             {OptimizerEntry {&l3->bias}}},
-                           0.95,
+                           0.9,
                            0.999,
-                           1e-8));
+                           1e-7));
 
-        set_file_output("C:/Programming/berserk-nets/g-exp300/");
+        set_file_output("C:/Programming/berserk-nets/g-exp303/");
         add_quantization(Quantizer {
             "" + std::to_string((int) quant_one) + "_" + std::to_string((int) quant_two),
             10,
             QuantizerEntry<int16_t>(&ft->weights.values, quant_one, true),
             QuantizerEntry<int16_t>(&ft->bias.values, quant_one),
             QuantizerEntry<int8_t>(&l1->weights.values, quant_two),
-            QuantizerEntry<int32_t>(&l1->bias.values, quant_two),
+            QuantizerEntry<int32_t>(&l1->bias.values, quant_one * quant_two),
             QuantizerEntry<float>(&l2->weights.values, 1),
-            QuantizerEntry<float>(&l2->bias.values, quant_two),
-            QuantizerEntry<float>(&l3->weights.values, 1),
-            QuantizerEntry<float>(&l3->bias.values, quant_two),
+            QuantizerEntry<float>(&l2->bias.values, quant_one * quant_two),
+            QuantizerEntry<float>(&l3->weights.values, nnue_scale / quant_one),
+            QuantizerEntry<float>(&l3->bias.values, nnue_scale * quant_two),
         });
         set_save_frequency(10);
     }
@@ -349,7 +351,7 @@ struct BerserkModel : ChessModel {
             float p_target = 1 / (1 + expf(-p_value * sigmoid_scale));
             float w_target = (w_value + 1) / 2.0f;
 
-            target(b)      = (p_target + w_target) / 2.0f;
+            target(b)      = 0.5 * p_target + 0.5 * w_target;
 
             // layer_selector->dense_output.values(b, 0) =
             //     (int) ((chess::popcount(pos->m_occupancy) - 1) / 4);
@@ -358,6 +360,8 @@ struct BerserkModel : ChessModel {
 };
 
 int main() {
+    math::seed(0);
+
     init();
     std::vector<std::string> files {};
 

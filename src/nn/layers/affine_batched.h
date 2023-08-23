@@ -29,8 +29,10 @@ struct AffineBatched : public nn::Layer {
         bias   .malloc();
 
         math::kaiming<float>(weights.values, prev->size / batches);
+        math::fill<float>(bias.values, 0.0f);
 
         weights.values >> data::GPU;
+        bias.values >> data::GPU;
     }
 
     void compile(size_t batch_size) override {

@@ -26,6 +26,7 @@ struct Affine : public nn::Layer {
         bias.malloc();
 
         math::kaiming<float>(weights.values, prev->size);
+        math::fill<float>(bias.values, 0.0f);
 
         weights.values >> data::GPU;
         bias   .values >> data::GPU;
