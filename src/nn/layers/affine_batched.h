@@ -3,8 +3,7 @@
 #include "../../operations/operations.h"
 #include "layer.h"
 
-namespace nn{
-
+namespace nn {
 
 struct AffineBatched : public nn::Layer {
 
@@ -26,7 +25,7 @@ struct AffineBatched : public nn::Layer {
         weights = nn::Tape(size, prev->size / batches);
         bias    = nn::Tape(size, 1);
         weights.malloc();
-        bias   .malloc();
+        bias.malloc();
 
         math::kaiming<float>(weights.values, prev->size / batches);
         math::fill<float>(bias.values, 0.0f);
@@ -46,9 +45,9 @@ struct AffineBatched : public nn::Layer {
     void forward() override {
         Layer::forward();
         operations::affine_batched<data::GPU>(prev->dense_output.values,
-                                              weights           .values,
-                                              bias              .values,
-                                              dense_output      .values,
+                                              weights.values,
+                                              bias.values,
+                                              dense_output.values,
                                               batches);
     }
     void backward() override {
@@ -56,17 +55,16 @@ struct AffineBatched : public nn::Layer {
 
         operations::affine_batched_bp<data::GPU>(prev->dense_output.values,
                                                  prev->dense_output.gradients,
-                                                 weights           .values,
-                                                 weights           .gradients,
-                                                 bias              .gradients,
-                                                 dense_output      .gradients,
+                                                 weights.values,
+                                                 weights.gradients,
+                                                 bias.gradients,
+                                                 dense_output.gradients,
                                                  batches);
-
     }
 
     std::vector<Tape*> params() override {
-        return std::vector<Tape*>{&weights, &bias};
+        return std::vector<Tape*> {&weights, &bias};
     }
 };
 
-}
+}    // namespace nn

@@ -44,6 +44,7 @@ struct Adam : public Optimizer{
             beta1,
             beta2,
             eps,
+            step_,
             entry.m_min,
             entry.m_max,
             entry.m_lasso,

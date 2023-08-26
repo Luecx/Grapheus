@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../operations/operations.h"
 #include "../../math/random.h"
+#include "../../operations/operations.h"
 #include "layer.h"
 
 namespace nn {
@@ -29,7 +29,7 @@ struct Affine : public nn::Layer {
         math::fill<float>(bias.values, 0.0f);
 
         weights.values >> data::GPU;
-        bias   .values >> data::GPU;
+        bias.values >> data::GPU;
     }
 
     void compile(size_t batch_size) override {
@@ -38,24 +38,22 @@ struct Affine : public nn::Layer {
     }
 
     void forward() override {
-        operations::affine<data::GPU>(
-            prev->dense_output.values,
-            weights.values,
-            bias.values,
-            dense_output.values);
+        operations::affine<data::GPU>(prev->dense_output.values,
+                                      weights.values,
+                                      bias.values,
+                                      dense_output.values);
     }
     void backward() override {
-        operations::affine_bp<data::GPU>(
-            prev->dense_output.values,
-            prev->dense_output.gradients,
-            weights.values,
-            weights.gradients,
-            bias.gradients,
-            dense_output.gradients);
+        operations::affine_bp<data::GPU>(prev->dense_output.values,
+                                         prev->dense_output.gradients,
+                                         weights.values,
+                                         weights.gradients,
+                                         bias.gradients,
+                                         dense_output.gradients);
     }
 
     std::vector<Tape*> params() override {
-        return std::vector<Tape*>{&weights, &bias};
+        return std::vector<Tape*> {&weights, &bias};
     }
 };
 }    // namespace nn
