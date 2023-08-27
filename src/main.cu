@@ -20,59 +20,64 @@ struct ChessModel : nn::Model {
     virtual void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions) = 0;
 
     // train function
-    float train(dataset::BatchLoader<chess::Position>& loader,
-                int                                    epochs     = 1000,
-                int                                    epoch_size = 1e7) {
+    void train(dataset::BatchLoader<chess::Position>& loader,
+               dataset::BatchLoader<chess::Position>& validation_loader,
+               int                                    epochs          = 1000,
+               int                                    epoch_size      = 1e7,
+               int                                    validation_size = 1e7) {
         this->compile(loader.batch_size);
 
-        float epoch_loss = 0;
-
         Timer t {};
-        for (int i = 0; i < epochs; i++) {
+        for (int i = 1; i <= epochs; i++) {
             t.start();
-            size_t prev_duration = 0;
-            float  batch_loss    = 0;
-            epoch_loss           = 0;
-            float lr             = m_lr_schedule.get()->get_lr(m_epoch);
 
-            for (int b = 0; b < epoch_size / loader.batch_size; b++) {
-                // get the next dataset and set it up while the other things
-                // are running on the gpu
+            uint64_t prev_print_tm         = 0;
+            float    total_epoch_loss      = 0;
+            float    total_validation_loss = 0;
+
+            for (int b = 1; b <= epoch_size / loader.batch_size; b++) {
                 auto* ds = loader.next();
                 setup_inputs_and_outputs(ds);
 
-                // print score of last iteration
-                if (b > 0) {
-                    batch_loss = loss_of_last_batch();
-                    epoch_loss += batch_loss;
-                }
+                float batch_loss = batch();
+                total_epoch_loss += batch_loss;
+                float epoch_loss = total_epoch_loss / b;
 
                 t.stop();
-                if (b > 0
-                    && (b == (epoch_size / loader.batch_size) - 1
-                        || t.elapsed() - prev_duration > 1000)) {
-                    prev_duration = t.elapsed();
+                uint64_t elapsed = t.elapsed();
+                if (elapsed - prev_print_tm > 1000 || b == epoch_size / loader.batch_size) {
+                    prev_print_tm = elapsed;
 
-                    printf("\rep/ba = [%3d/%5d], ", i, b);
-                    printf("batch_loss = [%1.8f], ", batch_loss);
-                    printf("epoch_loss = [%1.8f], ", epoch_loss / b);
-                    printf("speed = [%9d pos/s], ",
-                           (int) round(1000.0f * loader.batch_size * b / t.elapsed()));
-                    printf("time = [%3ds], ", (int) t.elapsed() / 1000);
-                    printf("lr = [%1.8f]", lr);
+                    printf("\rep = [%4d], epoch_loss = [%1.8f], batch = [%5d], batch_loss = [%1.8f], "
+                           "speed = [%7d pos/s], time = [%3ds]",
+                           i,
+                           epoch_loss,
+                           b,
+                           batch_loss,
+                           (int) (1000.0f * loader.batch_size * b / elapsed),
+                           (int) (elapsed / 1000.0f));
                     std::cout << std::flush;
                 }
-
-                // start training of new batch
-                batch();
             }
 
             std::cout << std::endl;
 
-            next_epoch(epoch_loss / (epoch_size / loader.batch_size));
-        }
+            float epoch_loss = total_epoch_loss / (epoch_size / loader.batch_size);
 
-        return epoch_loss / (epoch_size / loader.batch_size);
+            for (int b = 1; b <= validation_size / validation_loader.batch_size; b++) {
+                auto* ds = validation_loader.next();
+                setup_inputs_and_outputs(ds);
+
+                total_validation_loss += loss();
+            }
+
+            float validation_loss =
+                total_validation_loss / (validation_size / validation_loader.batch_size);
+            printf("ep = [%4d], valid_loss = [%1.8f]", i, validation_loss);
+            std::cout << std::endl;
+
+            next_epoch(epoch_loss, validation_loss);
+        }
     }
 
     void test_fen(const std::string& fen) {
@@ -210,6 +215,7 @@ struct BerserkModel : ChessModel {
     const float  sigmoid_scale = 1.0 / 160.0;
     const float  quant_one     = 64.0;
     const float  quant_two     = 32.0;
+    const float  nnue_scale    = 256.0;
 
     const size_t n_features    = 16 * 12 * 64;
     const size_t n_ft          = 768;
@@ -220,26 +226,26 @@ struct BerserkModel : ChessModel {
     BerserkModel()
         : ChessModel() {
 
-        in1             = add<SparseInput>(n_features, 32);
-        in2             = add<SparseInput>(n_features, 32);
+        in1          = add<SparseInput>(n_features, 32);
+        in2          = add<SparseInput>(n_features, 32);
 
-        auto ft         = add<FeatureTransformer>(in1, in2, n_ft);
-        auto fta        = add<ReLU>(ft);
+        auto ft      = add<FeatureTransformer>(in1, in2, n_ft, nnue_scale);
+        auto fta     = add<ReLU>(ft);
 
-        auto l1         = add<Affine>(fta, n_l1);
-        auto l1a        = add<ReLU>(l1);
+        auto l1      = add<Affine>(fta, n_l1);
+        auto l1a     = add<ReLU>(l1);
 
-        auto l2         = add<Affine>(l1a, n_l2);
-        auto l2a        = add<ReLU>(l2);
+        auto l2      = add<Affine>(l1a, n_l2);
+        auto l2a     = add<ReLU>(l2);
 
-        auto pos        = add<Affine>(l2a, n_out);
-        auto output     = add<Sigmoid>(pos, sigmoid_scale);
+        auto cp_eval = add<Affine>(l2a, n_out);
+        auto sigmoid = add<Sigmoid>(cp_eval, sigmoid_scale * nnue_scale);
 
         // Mean power error
         set_loss(MPE {2.5, true});
 
         // Steady LR decay
-        set_lr_schedule(StepDecayLRSchedule {5e-3, 0.025, 1000});
+        set_lr_schedule(StepDecayLRSchedule {1e-3, 0.992, 1});
 
         const float hidden_max = 127.0 / quant_two;
 
@@ -249,13 +255,14 @@ struct BerserkModel : ChessModel {
                             {OptimizerEntry {&l1->bias}},
                             {OptimizerEntry {&l2->weights}},
                             {OptimizerEntry {&l2->bias}},
-                            {OptimizerEntry {&pos->weights}},
-                            {OptimizerEntry {&pos->bias}}},
-                           0.95,
+                            {OptimizerEntry {&cp_eval->weights}},
+                            {OptimizerEntry {&cp_eval->bias}}},
+                           0.9,
                            0.999,
-                           1e-8));
+                           1e-7));
 
         set_file_output("C:/Programming/berserk-nets/exp1/");
+
         add_quantization(Quantizer {
             "" + std::to_string((int) quant_one) + "_" + std::to_string((int) quant_two),
             10,
@@ -265,8 +272,8 @@ struct BerserkModel : ChessModel {
             QuantizerEntry<int32_t>(&l1->bias.values, quant_two),
             QuantizerEntry<float>(&l2->weights.values, 1.0),
             QuantizerEntry<float>(&l2->bias.values, quant_two),
-            QuantizerEntry<float>(&pos->weights.values, 1.0),
-            QuantizerEntry<float>(&pos->bias.values, quant_two),
+            QuantizerEntry<float>(&cp_eval->weights.values, nnue_scale / quant_two),
+            QuantizerEntry<float>(&cp_eval->bias.values, nnue_scale),
         });
         set_save_frequency(10);
     }
@@ -313,7 +320,7 @@ struct BerserkModel : ChessModel {
 
         auto& target = m_loss->target;
 
-#pragma omp parallel for schedule(static) num_threads(8)
+#pragma omp parallel for schedule(static) num_threads(16)
         for (int b = 0; b < positions->header.entry_count; b++) {
             chess::Position* pos = &positions->positions[b];
             // fill in the inputs and target values
@@ -352,10 +359,11 @@ struct BerserkModel : ChessModel {
                 w_value = -w_value;
             }
 
-            float p_target = 1 / (1 + expf(-p_value * sigmoid_scale));
-            float w_target = (w_value + 1) / 2.0f;
+            float       p_target = 1 / (1 + expf(-p_value * sigmoid_scale));
+            float       w_target = (w_value + 1) / 2.0f;
 
-            target(b)      = 0.5 * p_target + 0.5 * w_target;
+            const float lambda   = 0.5;
+            target(b)            = lambda * p_target + (1.0 - lambda) * w_target;
 
             // layer_selector->dense_output.values(b, 0) =
             //     (int) ((chess::popcount(pos->m_occupancy) - 1) / 4);
@@ -367,21 +375,25 @@ int main() {
     math::seed(0);
 
     init();
+
     std::vector<std::string> files {};
-
-    for (int i = 1; i <= 200; i++) {
+    for (int i = 1; i <= 200; i++)
         files.push_back("C:/Programming/berserk-data/exp204/exp204." + std::to_string(i) + ".bin");
-    }
 
-    int                                   epoch_size = 1e8;
-    int                                   batch_size = 16384;
+    std::vector<std::string> validation_files {};
+    validation_files.push_back("C:/Programming/berserk-data/exp204/validation.bin");
+
+    const int                             batch_size = 16384;
     dataset::BatchLoader<chess::Position> loader {files, batch_size};
     loader.start();
+    dataset::BatchLoader<chess::Position> validation_loader {validation_files, batch_size};
+    validation_loader.start();
 
     BerserkModel model {};
-    model.train(loader, 1500, epoch_size);
+    model.train(loader, validation_loader, 600, 1e8, 1e7);
 
     loader.kill();
+    validation_loader.kill();
 
     close();
     return 0;

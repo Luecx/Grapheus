@@ -17,7 +17,7 @@ struct FeatureTransformer : public Layer {
     Tape out_2{0,0};
 
     public:
-    FeatureTransformer(SparseInput* inp1, SparseInput* inp2, size_t half_size)
+    FeatureTransformer(SparseInput* inp1, SparseInput* inp2, size_t half_size, float scale = 1.0)
         : Layer(2 * half_size)
         , inp1(inp1)
         , inp2(inp2) {
@@ -31,7 +31,7 @@ struct FeatureTransformer : public Layer {
         bias = Tape(size / 2, 1);
         bias.malloc();
 
-        math::kaiming<float>(weights.values, inp1->max_inputs);
+        math::kaiming<float>(weights.values, inp1->max_inputs * scale);
         math::fill<float>(bias.values, 0.0f);
 
         weights.values >> data::GPU;
