@@ -18,7 +18,7 @@ struct Optimizer {
         step_++;
 
         for (int i = 0; i < entries.size(); i++) {
-            this->step(entries[i], i, lr);
+            this->step(entries[i], i, lr * entries[i].m_lr_scalar);
         }
     }
 

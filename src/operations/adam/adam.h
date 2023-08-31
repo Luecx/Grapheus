@@ -52,7 +52,6 @@ void adam(      data::DenseMatrix<float>& values,
           float                           beta1,
           float                           beta2,
           float                           eps,
-          int                             step,
           // not directly related to adam but any optimizer should set use this too ^^
           float min,
           float max,
@@ -72,10 +71,6 @@ void adam(      data::DenseMatrix<float>& values,
     ASSERT(gradients.first<DEV>());
     ASSERT(first_moment.first<DEV>());
     ASSERT(second_moment.first<DEV>());
-
-    float bc1 = 1.0f - powf(beta1, step);
-    float bc2 = 1.0f - powf(beta2, step);
-    float slr = lr * sqrtf(bc2) / bc1;
 
     if (data::is_gpu(DEV)) {
         int block_size_x;
@@ -102,7 +97,7 @@ void adam(      data::DenseMatrix<float>& values,
                                       values.n,
                                       values.ld,
                                       first_moment.ld,
-                                      slr,
+                                      lr,
                                       beta1,
                                       beta2,
                                       eps,

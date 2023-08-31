@@ -35,6 +35,10 @@ struct Adam : public Optimizer{
     }
 
     void step(OptimizerEntry& entry, int idx, float lr) override {
+        // float bc1 = 1.0f - std::powf(beta1, step_);
+        // float bc2 = 1.0f - std::powf(beta2, step_);
+        // float slr = lr * sqrtf(bc2) / bc1;
+
         operations::adam<data::GPU>(
             entry.m_reference->values,
             entry.m_reference->gradients,
@@ -44,7 +48,6 @@ struct Adam : public Optimizer{
             beta1,
             beta2,
             eps,
-            step_,
             entry.m_min,
             entry.m_max,
             entry.m_lasso,

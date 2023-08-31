@@ -10,14 +10,12 @@ struct FeatureTransformer : public Layer {
     Tape         weights {0, 0};
     Tape         bias {0, 0};
 
-    float ft_regularization = 0.0;
-
     private:
-    Tape out_1{0,0};
-    Tape out_2{0,0};
+    Tape out_1 {0, 0};
+    Tape out_2 {0, 0};
 
     public:
-    FeatureTransformer(SparseInput* inp1, SparseInput* inp2, size_t half_size, float scale = 1.0)
+    FeatureTransformer(SparseInput* inp1, SparseInput* inp2, size_t half_size)
         : Layer(2 * half_size)
         , inp1(inp1)
         , inp2(inp2) {
@@ -31,11 +29,12 @@ struct FeatureTransformer : public Layer {
         bias = Tape(size / 2, 1);
         bias.malloc();
 
-        math::kaiming<float>(weights.values, inp1->max_inputs * scale);
-        math::fill<float>(bias.values, 0.0f);
+        float sigma = std::sqrt(1.0 / inp1->size);
+        math::uniform<float>(weights.values, -sigma, sigma);
+        math::fill<float>(bias.values, 0.0);
 
         weights.values >> data::GPU;
-        bias   .values >> data::GPU;
+        bias.values >> data::GPU;
     }
 
     void compile(size_t batch_size) override {
@@ -51,23 +50,34 @@ struct FeatureTransformer : public Layer {
     }
 
     void forward() override {
-        operations::affine_sparse<data::GPU>(
-            weights.values, inp1->sparse_output, bias.values, out_1.values);
-        operations::affine_sparse<data::GPU>(
-            weights.values, inp2->sparse_output, bias.values, out_2.values);
-//        operations::affine_sparse_shared<data::GPU>(weights.values, inp1->sparse_output, inp2->sparse_output, bias.values, dense_output.values);
+        operations::affine_sparse<data::GPU>(weights.values,
+                                             inp1->sparse_output,
+                                             bias.values,
+                                             out_1.values);
+        operations::affine_sparse<data::GPU>(weights.values,
+                                             inp2->sparse_output,
+                                             bias.values,
+                                             out_2.values);
+        //        operations::affine_sparse_shared<data::GPU>(weights.values, inp1->sparse_output,
+        //        inp2->sparse_output, bias.values, dense_output.values);
     }
+
     void backward() override {
-        operations::affine_sparse_bp<data::GPU>(
-            weights.gradients, inp1->sparse_output, bias.gradients, out_1.values, out_1.gradients, ft_regularization);
-        operations::affine_sparse_bp<data::GPU>(
-            weights.gradients, inp2->sparse_output, bias.gradients, out_2.values, out_2.gradients, ft_regularization);
+        operations::affine_sparse_bp<data::GPU>(weights.gradients,
+                                                inp1->sparse_output,
+                                                bias.gradients,
+                                                out_1.gradients);
+        operations::affine_sparse_bp<data::GPU>(weights.gradients,
+                                                inp2->sparse_output,
+                                                bias.gradients,
+                                                out_2.gradients);
         // dont use this code, its slower for some stupid reason
-//        operations::affine_sparse_shared_bp<data::GPU>(weights.gradients, inp1->sparse_output, inp2->sparse_output, bias.gradients, dense_output.gradients);
+        //        operations::affine_sparse_shared_bp<data::GPU>(weights.gradients,
+        //        inp1->sparse_output, inp2->sparse_output, bias.gradients, dense_output.gradients);
     }
 
     std::vector<Tape*> params() override {
-        return std::vector<Tape*>{&weights, &bias};
+        return std::vector<Tape*> {&weights, &bias};
     }
 };
 

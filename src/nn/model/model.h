@@ -247,38 +247,38 @@ struct Model {
 
     void load_weights(const std::filesystem::path& name) {
 
-        FILE* f = fopen(name.string().c_str(), "rb");
+        // FILE* f = fopen(name.string().c_str(), "rb");
 
-        // figure out how many entries we will store
-        uint64_t count = 0;
-        for (auto& l : m_layers) {
-            for (Tape* t : l->params()) {
-                count += t->values.size();
-            }
-        }
-
-        uint64_t fileCount = 0;
-        fread(&fileCount, sizeof(uint64_t), 1, f);
-        ASSERT(count == fileCount);
-
-        for (auto& l : m_layers) {
-            for (Tape* t : l->params()) {
-                fread(t->values.address<data::CPU>(), sizeof(float), t->values.size(), f);
-                t->values >> data::GPU;
-            }
-        }
-        fclose(f);
-
-        // std::ifstream file(name, std::ios::binary);
-        // // layers
-        // for(auto& l:m_layers){
-        //     for(auto* p:l->params()){
-        //         file.read(reinterpret_cast<char*>(p->values.first<data::CPU>()), p->values.m *
-        //         p->values.n * sizeof(float)); p->values >> data::GPU;
+        // // figure out how many entries we will store
+        // uint64_t count = 0;
+        // for (auto& l : m_layers) {
+        //     for (Tape* t : l->params()) {
+        //         count += t->values.size();
         //     }
         // }
 
-        // file.close();
+        // uint64_t fileCount = 0;
+        // fread(&fileCount, sizeof(uint64_t), 1, f);
+        // ASSERT(count == fileCount);
+
+        // for (auto& l : m_layers) {
+        //     for (Tape* t : l->params()) {
+        //         fread(t->values.address<data::CPU>(), sizeof(float), t->values.size(), f);
+        //         t->values >> data::GPU;
+        //     }
+        // }
+        // fclose(f);
+
+        std::ifstream file(name, std::ios::binary);
+        // layers
+        for(auto& l:m_layers){
+            for(auto* p:l->params()){
+                file.read(reinterpret_cast<char*>(p->values.first<data::CPU>()), p->values.m *
+                p->values.n * sizeof(float)); p->values >> data::GPU;
+            }
+        }
+
+        file.close();
     }
 };
 
