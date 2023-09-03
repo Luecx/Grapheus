@@ -10,6 +10,8 @@ struct FeatureTransformer : public Layer {
     Tape         weights {0, 0};
     Tape         bias {0, 0};
 
+    float        ft_regularization = 0.0;
+
     private:
     Tape out_1 {0, 0};
     Tape out_2 {0, 0};
@@ -29,8 +31,7 @@ struct FeatureTransformer : public Layer {
         bias = Tape(size / 2, 1);
         bias.malloc();
 
-        float sigma = std::sqrt(1.0 / inp1->size);
-        math::uniform<float>(weights.values, -sigma, sigma);
+        math::kaiming<float>(weights.values, inp1->max_inputs);
         math::fill<float>(bias.values, 0.0);
 
         weights.values >> data::GPU;
@@ -66,11 +67,15 @@ struct FeatureTransformer : public Layer {
         operations::affine_sparse_bp<data::GPU>(weights.gradients,
                                                 inp1->sparse_output,
                                                 bias.gradients,
-                                                out_1.gradients);
+                                                out_1.values,
+                                                out_1.gradients,
+                                                ft_regularization);
         operations::affine_sparse_bp<data::GPU>(weights.gradients,
                                                 inp2->sparse_output,
                                                 bias.gradients,
-                                                out_2.gradients);
+                                                out_2.values,
+                                                out_2.gradients,
+                                                ft_regularization);
         // dont use this code, its slower for some stupid reason
         //        operations::affine_sparse_shared_bp<data::GPU>(weights.gradients,
         //        inp1->sparse_output, inp2->sparse_output, bias.gradients, dense_output.gradients);

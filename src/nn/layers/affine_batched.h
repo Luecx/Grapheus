@@ -30,6 +30,11 @@ struct AffineBatched : public nn::Layer {
         math::kaiming<float>(weights.values, prev->size / batches);
         math::fill<float>(bias.values, 0.0f);
 
+        const size_t out_batch_size = size / batches;
+        for (size_t i = out_batch_size; i < size; i++)
+            for (size_t j = 0; j < prev->size / batches; j++)
+                weights.values(i, j) = weights.values(i % out_batch_size, j);
+
         weights.values >> data::GPU;
         bias.values >> data::GPU;
     }

@@ -25,8 +25,7 @@ struct Affine : public nn::Layer {
         bias = Tape(size, 1);
         bias.malloc();
 
-        float sigma = std::sqrt(1.0 / prev->size);
-        math::uniform<float>(weights.values, -sigma, sigma);
+        math::kaiming<float>(weights.values, prev->size);
         math::fill<float>(bias.values, 0.0);
 
         weights.values >> data::GPU;

@@ -214,13 +214,10 @@ struct ChessModel : nn::Model {
 struct BerserkModel : ChessModel {
     SparseInput* in1;
     SparseInput* in2;
-    SparseInput* psqt1;
-    SparseInput* psqt2;
 
     const float  sigmoid_scale = 1.0 / 160.0;
-    const float  quant_one     = 127.0;
-    const float  quant_two     = 64.0;
-    const float  nnue_scale    = 600.0;
+    const float  quant_one     = 64.0;
+    const float  quant_two     = 32.0;
 
     const size_t n_features    = 16 * 12 * 64;
     const size_t n_ft          = 768;
@@ -231,51 +228,27 @@ struct BerserkModel : ChessModel {
     BerserkModel()
         : ChessModel() {
 
-        in1           = add<SparseInput>(n_features, 32);
-        in2           = add<SparseInput>(n_features, 32);
-        psqt1         = add<SparseInput>(n_features, 32);
-        psqt2         = add<SparseInput>(n_features, 32);
+        in1                   = add<SparseInput>(n_features, 32);
+        in2                   = add<SparseInput>(n_features, 32);
 
-        auto ft       = add<FeatureTransformer>(in1, in2, n_ft);
-        auto fta      = add<ClippedRelu>(ft);
+        auto ft               = add<FeatureTransformer>(in1, in2, n_ft);
+        auto fta              = add<ReLU>(ft);
+        ft->ft_regularization = 1.0 / 16384.0 / 4194304.0;
 
-        auto l1       = add<Affine>(fta, n_l1);
-        auto l1a      = add<ReLU>(l1);
+        auto l1               = add<Affine>(fta, n_l1);
+        auto l1a              = add<ReLU>(l1);
 
-        auto l2       = add<Affine>(l1a, n_l2);
-        auto l2a      = add<ReLU>(l2);
+        auto l2               = add<Affine>(l1a, n_l2);
+        auto l2a              = add<ReLU>(l2);
 
-        auto pos_eval = add<Affine>(l2a, n_out);
-
-        auto psqt_ft  = add<FeatureTransformer>(psqt1, psqt2, 1);
-        auto psqt_sp  = add<Split>(psqt_ft, 1);
-        auto pc_eval  = add<WeightedSum>(&psqt_sp->heads[0], &psqt_sp->heads[1], 0.5, -0.5);
-
-        auto cp_eval  = add<WeightedSum>(pos_eval, pc_eval, 1, 1);
-        auto sigmoid  = add<Sigmoid>(cp_eval, sigmoid_scale * nnue_scale);
-
-        // ---------------------------------------------------------------------------
-        constexpr float piece_val[6] = {60, 375, 395, 615, 1220, 0};
-        for (int kingsq = 0; kingsq <= 64; kingsq++) {
-            for (int sq = 0; sq <= 64; sq++) {
-                for (int pc = chess::PAWN; pc <= chess::QUEEN; pc++) {
-                    int idxw = index(sq, chess::piece(chess::WHITE, pc), kingsq, chess::WHITE);
-                    int idxb = index(sq, chess::piece(chess::BLACK, pc), kingsq, chess::WHITE);
-
-                    psqt_ft->weights.values(0, idxw) = piece_val[pc] / nnue_scale;
-                    psqt_ft->weights.values(0, idxb) = -piece_val[pc] / nnue_scale;
-                }
-            }
-        }
-
-        psqt_ft->weights.values >> data::GPU;
-        // ---------------------------------------------------------------------------
+        auto pos_eval         = add<Affine>(l2a, n_out);
+        auto sigmoid          = add<Sigmoid>(pos_eval, sigmoid_scale);
 
         // Mean power error
         set_loss(MPE {2.5, true});
 
         // Steady LR decay
-        set_lr_schedule(StepDecayLRSchedule {2.05e-4, 0.025, 1000});
+        set_lr_schedule(StepDecayLRSchedule {5e-3, 0.025, 1000});
 
         const float hidden_max = 127.0 / quant_two;
 
@@ -285,14 +258,13 @@ struct BerserkModel : ChessModel {
                             {OptimizerEntry {&l1->bias}},
                             {OptimizerEntry {&l2->weights}},
                             {OptimizerEntry {&l2->bias}},
-                            {OptimizerEntry {&pos_eval->weights}.lr_scalar(10)},
-                            {OptimizerEntry {&pos_eval->bias}.lr_scalar(10)},
-                            {OptimizerEntry {&psqt_ft->weights}}},
-                           0.9,
+                            {OptimizerEntry {&pos_eval->weights}},
+                            {OptimizerEntry {&pos_eval->bias}}},
+                           0.95,
                            0.999,
-                           1e-7));
+                           1e-8));
 
-        set_file_output("C:/Programming/berserk-nets/exp7/");
+        set_file_output("C:/Programming/berserk-nets/exp15/");
 
         add_quantization(Quantizer {
             "" + std::to_string((int) quant_one) + "_" + std::to_string((int) quant_two),
@@ -300,12 +272,11 @@ struct BerserkModel : ChessModel {
             QuantizerEntry<int16_t>(&ft->weights.values, quant_one, true),
             QuantizerEntry<int16_t>(&ft->bias.values, quant_one),
             QuantizerEntry<int8_t>(&l1->weights.values, quant_two),
-            QuantizerEntry<int32_t>(&l1->bias.values, quant_one * quant_two),
+            QuantizerEntry<int32_t>(&l1->bias.values, quant_two),
             QuantizerEntry<float>(&l2->weights.values, 1.0),
-            QuantizerEntry<float>(&l2->bias.values, quant_one * quant_two),
-            QuantizerEntry<float>(&pos_eval->weights.values, nnue_scale / quant_one),
-            QuantizerEntry<float>(&pos_eval->bias.values, nnue_scale * quant_two),
-            QuantizerEntry<int32_t>(&psqt_ft->weights.values, nnue_scale * quant_two),
+            QuantizerEntry<float>(&l2->bias.values, quant_two),
+            QuantizerEntry<float>(&pos_eval->weights.values, 1.0),
+            QuantizerEntry<float>(&pos_eval->bias.values, quant_two),
         });
         set_save_frequency(10);
     }
@@ -349,8 +320,6 @@ struct BerserkModel : ChessModel {
     void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions, const float lambda) {
         in1->sparse_output.clear();
         in2->sparse_output.clear();
-        psqt1->sparse_output.clear();
-        psqt2->sparse_output.clear();
 
         auto& target = m_loss->target;
 
@@ -375,13 +344,9 @@ struct BerserkModel : ChessModel {
                 if (pos->m_meta.stm() == chess::WHITE) {
                     in1->sparse_output.set(b, piece_index_white_pov);
                     in2->sparse_output.set(b, piece_index_black_pov);
-                    psqt1->sparse_output.set(b, piece_index_white_pov);
-                    psqt2->sparse_output.set(b, piece_index_black_pov);
                 } else {
                     in2->sparse_output.set(b, piece_index_white_pov);
                     in1->sparse_output.set(b, piece_index_black_pov);
-                    psqt2->sparse_output.set(b, piece_index_white_pov);
-                    psqt1->sparse_output.set(b, piece_index_black_pov);
                 }
 
                 bb = chess::lsb_reset(bb);
