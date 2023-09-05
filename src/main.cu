@@ -78,8 +78,6 @@ struct ChessModel : nn::Model {
             std::cout << std::endl;
 
             next_epoch(epoch_loss, validation_loss);
-
-            // distribution(validation_loader);
         }
     }
 
@@ -122,16 +120,20 @@ struct ChessModel : nn::Model {
     void distribution(dataset::BatchLoader<chess::Position>& loader, int batches = 32) {
         this->compile(loader.batch_size);
 
-        std::vector<DenseMatrix<float>> max_values {};
-        std::vector<DenseMatrix<float>> min_values {};
+        std::vector<DenseMatrix<float>>            max_values {};
+        std::vector<DenseMatrix<float>>            min_values {};
+        std::vector<std::pair<uint64_t, uint64_t>> sparsity {};
 
         for (auto l : m_layers) {
             max_values.emplace_back(l->dense_output.values.m, 1);
             min_values.emplace_back(l->dense_output.values.m, 1);
             max_values.back().malloc<data::CPU>();
             min_values.back().malloc<data::CPU>();
-            math::uniform(max_values.back(), -1000000.0f, -1000000.0f);
-            math::uniform(min_values.back(), 1000000.0f, 1000000.0f);
+
+            math::fill<float>(max_values.back(), -FLT_MAX);
+            math::fill<float>(min_values.back(), FLT_MAX);
+
+            sparsity.push_back(std::pair(0, 0));
         }
 
         for (int b = 0; b < batches; b++) {
@@ -151,6 +153,9 @@ struct ChessModel : nn::Model {
                             std::max(max_values[i](m, 0), layer->dense_output.values(m, n));
                         min_values[i](m, 0) =
                             std::min(min_values[i](m, 0), layer->dense_output.values(m, n));
+
+                        sparsity[i].first++;
+                        sparsity[i].second += (layer->dense_output.values(m, n) > 0);
                     }
                 }
             }
@@ -195,6 +200,12 @@ struct ChessModel : nn::Model {
             std::cout << "died: " << died << " / " << max_values[i].size();
             std::cout << "\n";
 
+            float sparsity_total  = sparsity[i].first;
+            float sparsity_active = sparsity[i].second;
+
+            std::cout << "sparsity: " << sparsity_active / sparsity_total;
+            std::cout << "\n";
+
             for (auto p : m_layers[i]->params()) {
                 float min = 10000000;
                 float max = -10000000;
@@ -221,7 +232,7 @@ struct BerserkModel : ChessModel {
 
     const size_t n_features    = 16 * 12 * 64;
     const size_t n_ft          = 768;
-    const size_t n_l1          = 8;
+    const size_t n_l1          = 16;
     const size_t n_l2          = 32;
     const size_t n_out         = 1;
 
@@ -252,19 +263,20 @@ struct BerserkModel : ChessModel {
 
         const float hidden_max = 127.0 / quant_two;
 
-        add_optimizer(Adam({{OptimizerEntry {&ft->weights}},
-                            {OptimizerEntry {&ft->bias}},
-                            {OptimizerEntry {&l1->weights}.clamp(-hidden_max, hidden_max)},
-                            {OptimizerEntry {&l1->bias}},
-                            {OptimizerEntry {&l2->weights}},
-                            {OptimizerEntry {&l2->bias}},
-                            {OptimizerEntry {&pos_eval->weights}},
-                            {OptimizerEntry {&pos_eval->bias}}},
-                           0.95,
-                           0.999,
-                           1e-8));
+        add_optimizer(AdamWarmup({{OptimizerEntry {&ft->weights}},
+                                  {OptimizerEntry {&ft->bias}},
+                                  {OptimizerEntry {&l1->weights}.clamp(-hidden_max, hidden_max)},
+                                  {OptimizerEntry {&l1->bias}},
+                                  {OptimizerEntry {&l2->weights}},
+                                  {OptimizerEntry {&l2->bias}},
+                                  {OptimizerEntry {&pos_eval->weights}},
+                                  {OptimizerEntry {&pos_eval->bias}}},
+                                 0.95,
+                                 0.999,
+                                 1e-8,
+                                 5 * 16384));
 
-        set_file_output("C:/Programming/berserk-nets/exp15/");
+        set_file_output("C:/Programming/berserk-nets/exp20/");
 
         add_quantization(Quantizer {
             "" + std::to_string((int) quant_one) + "_" + std::to_string((int) quant_two),
