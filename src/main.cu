@@ -231,7 +231,7 @@ struct BerserkModel : ChessModel {
     const float  quant_two     = 32.0;
 
     const size_t n_features    = 16 * 12 * 64;
-    const size_t n_ft          = 768;
+    const size_t n_ft          = 1024;
     const size_t n_l1          = 16;
     const size_t n_l2          = 32;
     const size_t n_out         = 1;
@@ -276,7 +276,7 @@ struct BerserkModel : ChessModel {
                                  1e-8,
                                  5 * 16384));
 
-        set_file_output("C:/Programming/berserk-nets/exp20/");
+        set_file_output("C:/Programming/berserk-nets/exp21/");
 
         add_quantization(Quantizer {
             "" + std::to_string((int) quant_one) + "_" + std::to_string((int) quant_two),
