@@ -227,11 +227,11 @@ struct BerserkModel : ChessModel {
     SparseInput* in2;
 
     const float  sigmoid_scale = 1.0 / 160.0;
-    const float  quant_one     = 64.0;
+    const float  quant_one     = 32.0;
     const float  quant_two     = 32.0;
 
     const size_t n_features    = 16 * 12 * 64;
-    const size_t n_ft          = 1024;
+    const size_t n_ft          = 1536;
     const size_t n_l1          = 16;
     const size_t n_l2          = 32;
     const size_t n_out         = 1;
@@ -243,8 +243,9 @@ struct BerserkModel : ChessModel {
         in2                   = add<SparseInput>(n_features, 32);
 
         auto ft               = add<FeatureTransformer>(in1, in2, n_ft);
-        auto fta              = add<ReLU>(ft);
+        auto fta              = add<ClippedRelu>(ft);
         ft->ft_regularization = 1.0 / 16384.0 / 4194304.0;
+        fta->max              = 127.0;
 
         auto l1               = add<Affine>(fta, n_l1);
         auto l1a              = add<ReLU>(l1);
@@ -259,7 +260,7 @@ struct BerserkModel : ChessModel {
         set_loss(MPE {2.5, true});
 
         // Steady LR decay
-        set_lr_schedule(StepDecayLRSchedule {5e-3, 0.025, 1000});
+        set_lr_schedule(StepDecayLRSchedule {1e-3, 0.025, 500});
 
         const float hidden_max = 127.0 / quant_two;
 
@@ -276,7 +277,7 @@ struct BerserkModel : ChessModel {
                                  1e-8,
                                  5 * 16384));
 
-        set_file_output("C:/Programming/berserk-nets/exp21/");
+        set_file_output("C:/Programming/berserk-nets/exp30/");
 
         add_quantization(Quantizer {
             "" + std::to_string((int) quant_one) + "_" + std::to_string((int) quant_two),
@@ -392,10 +393,10 @@ int main() {
 
     std::vector<std::string> files {};
     for (int i = 1; i <= 200; i++)
-        files.push_back("C:/Programming/berserk-data/exp203/exp203." + std::to_string(i) + ".bin");
+        files.push_back("C:/Programming/berserk-data/data206/data206." + std::to_string(i) + ".bin");
 
     std::vector<std::string> validation_files {};
-    validation_files.push_back("C:/Programming/berserk-data/exp203/validation.bin");
+    validation_files.push_back("C:/Programming/berserk-data/data206/validation.bin");
 
     const int                             batch_size = 16384;
     dataset::BatchLoader<chess::Position> loader {files, batch_size};
@@ -404,7 +405,8 @@ int main() {
     validation_loader.start();
 
     BerserkModel model {};
-    model.train(loader, validation_loader);
+    model.load_weights("C:/Programming/berserk-nets/exp28/weights/740.state");
+    model.train(loader, validation_loader, 1000);
 
     loader.kill();
     validation_loader.kill();
