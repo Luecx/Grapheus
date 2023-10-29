@@ -38,7 +38,7 @@ struct ChessModel : nn::Model {
 
             for (int b = 1; b <= epoch_size / loader.batch_size; b++) {
                 auto* ds = loader.next();
-                setup_inputs_and_outputs(ds, 0.5);
+                setup_inputs_and_outputs(ds, 0.10);
 
                 float batch_loss = batch();
                 total_epoch_loss += batch_loss;
@@ -231,7 +231,7 @@ struct BerserkModel : ChessModel {
     const float  quant_two     = 32.0;
 
     const size_t n_features    = 16 * 12 * 64;
-    const size_t n_ft          = 1536;
+    const size_t n_ft          = 1024;
     const size_t n_l1          = 16;
     const size_t n_l2          = 32;
     const size_t n_out         = 1;
@@ -277,7 +277,7 @@ struct BerserkModel : ChessModel {
                                  1e-8,
                                  5 * 16384));
 
-        set_file_output("C:/Programming/berserk-nets/exp30/");
+        set_file_output("C:/Programming/berserk-nets/exp44/");
 
         add_quantization(Quantizer {
             "" + std::to_string((int) quant_one) + "_" + std::to_string((int) quant_two),
@@ -393,10 +393,10 @@ int main() {
 
     std::vector<std::string> files {};
     for (int i = 1; i <= 200; i++)
-        files.push_back("C:/Programming/berserk-data/data206/data206." + std::to_string(i) + ".bin");
+        files.push_back("C:/Programming/berserk-data/data212/data212." + std::to_string(i) + ".bin");
 
     std::vector<std::string> validation_files {};
-    validation_files.push_back("C:/Programming/berserk-data/data206/validation.bin");
+    validation_files.push_back("C:/Programming/berserk-data/data212/validation.bin");
 
     const int                             batch_size = 16384;
     dataset::BatchLoader<chess::Position> loader {files, batch_size};
@@ -405,7 +405,7 @@ int main() {
     validation_loader.start();
 
     BerserkModel model {};
-    model.load_weights("C:/Programming/berserk-nets/exp28/weights/740.state");
+    model.load_weights("C:/Programming/berserk-nets/exp42/weights/1000.state");
     model.train(loader, validation_loader, 1000);
 
     loader.kill();
