@@ -40,7 +40,7 @@ struct DataSet {
 
     // shuffle
     void shuffle() {
-        std::shuffle(positions.begin(), positions.end(), twister);
+        std::shuffle(positions.begin(), positions.end(), math::twister);
     }
 };
 

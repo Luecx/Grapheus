@@ -1,7 +1,6 @@
 #pragma once
 
-#include "operations/operations.h"
-#include "optimizer.h"
+#include "adam.h"
 
 namespace nn {
 

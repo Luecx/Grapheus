@@ -10,6 +10,9 @@
 #include "operations/operations.h"
 
 #include <fstream>
+#include <limits>
+
+namespace fs = std::filesystem;
 
 using namespace nn;
 using namespace data;
@@ -130,8 +133,8 @@ struct ChessModel : nn::Model {
             max_values.back().malloc<data::CPU>();
             min_values.back().malloc<data::CPU>();
 
-            math::fill<float>(max_values.back(), -FLT_MAX);
-            math::fill<float>(min_values.back(), FLT_MAX);
+            math::fill<float>(max_values.back(), -std::numeric_limits<float>::max());
+            math::fill<float>(min_values.back(), std::numeric_limits<float>::max());
 
             sparsity.push_back(std::pair(0, 0));
         }
@@ -277,7 +280,7 @@ struct BerserkModel : ChessModel {
                                  1e-8,
                                  5 * 16384));
 
-        set_file_output("C:/Programming/berserk-nets/exp44/");
+        set_file_output("/media/jhonnold/Data/berserk-nets/test");
 
         add_quantization(Quantizer {
             "" + std::to_string((int) quant_one) + "_" + std::to_string((int) quant_two),
@@ -319,9 +322,6 @@ struct BerserkModel : ChessModel {
 
         piece_square ^= 56;
         king_square ^= 56;
-
-        chess::Square relative_king_square;
-        chess::Square relative_piece_square;
 
         const int     oP  = piece_type + 6 * (piece_color != view);
         const int     oK  = (7 * !(king_square & 4)) ^ (56 * view) ^ king_square;
@@ -392,20 +392,28 @@ int main() {
     init();
 
     std::vector<std::string> files {};
-    for (int i = 1; i <= 200; i++)
-        files.push_back("C:/Programming/berserk-data/data212/data212." + std::to_string(i) + ".bin");
-
     std::vector<std::string> validation_files {};
-    validation_files.push_back("C:/Programming/berserk-data/data212/validation.bin");
+
+    for (const auto& entry : fs::directory_iterator("/media/jhonnold/Data/berserk-bins/data212")) {
+        const std::string path = entry.path().string();
+        if (path.find("valid") != std::string::npos) {
+            std::cout << "Specifying " << path << " as validation data!" << std::endl;
+            validation_files.push_back(path);
+        } else {
+            std::cout << "Specifying " << path << " as training data!" << std::endl;
+            files.push_back(path);
+        }
+    }
 
     const int                             batch_size = 16384;
     dataset::BatchLoader<chess::Position> loader {files, batch_size};
     loader.start();
+
     dataset::BatchLoader<chess::Position> validation_loader {validation_files, batch_size};
     validation_loader.start();
 
     BerserkModel model {};
-    model.load_weights("C:/Programming/berserk-nets/exp42/weights/1000.state");
+    // model.load_weights("C:/Programming/berserk-nets/exp42/weights/1000.state");
     model.train(loader, validation_loader, 1000);
 
     loader.kill();

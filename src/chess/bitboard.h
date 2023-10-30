@@ -47,7 +47,7 @@ inline bool has(BB number, Square index) { return ((number >> index) & 1ULL) == 
  */
 inline Square lsb(BB bb) {
     //    UCI_ASSERT(bb != 0);
-    return _tzcnt_u64(bb);
+    return __builtin_ctzll(bb);
 }
 
 /**
@@ -92,7 +92,7 @@ https:    // stackoverflow.com/questions/7669057/find-nth-set-bit-in-an-int
  * @param bb
  * @return
  */
-inline int popcount(BB bb) { return __popcnt64(bb); }
+inline int popcount(BB bb) { return __builtin_popcountll(bb); }
 
 /**
  * counts the ones inside the bitboard before the given index

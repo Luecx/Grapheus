@@ -27,7 +27,7 @@ inline void kaiming(data::DenseMatrix<TYPE>& matrix, size_t expected_inputs) {
     for (size_t i = 0; i < matrix.m; i++) {
         for (size_t j = 0; j < matrix.n; j++) {
             auto r1 = dis(twister), r2 = dis(twister);
-            auto r = std::sqrt(-2.0 * std::log(r1)) * std::cos(2 * std::_Pi * r2);
+            auto r = std::sqrt(-2.0 * std::log(r1)) * std::cos(6.28318530718 * r2);
             matrix.get(i, j) = r * std::sqrt(2.0 / expected_inputs);
         }
     }
