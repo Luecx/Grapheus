@@ -193,10 +193,10 @@ std::ostream& operator<<(std::ostream& os, const DenseMatrix<TYPE_>& data) {
 //       << "GPU address: " << data.template address<GPU>() << " + " << data.offset << "\n";
 
     if (data.n != 1) {
-        os << std::fixed << std::setprecision(5);
+        os << std::fixed << std::setprecision(10);
         for (int p_i = 0; p_i < data.m; p_i++) {
             for (int p_n = 0; p_n < data.n; p_n++) {
-                os << std::setw(11) << (double) data(p_i, p_n);
+                os << std::setw(20) << (double) data(p_i, p_n);
             }
             os << "\n";
         }

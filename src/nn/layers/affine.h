@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../operations/operations.h"
 #include "../../math/random.h"
+#include "../../operations/operations.h"
 #include "layer.h"
 
 namespace nn {
@@ -25,15 +25,11 @@ struct Affine : public nn::Layer {
         bias = Tape(size, 1);
         bias.malloc();
 
-        float stdv = sqrt(2.0f / (float)prev->size);
-        math::normal(weights.values, 0.0f, stdv );
-
-//        float stdv = sqrt(1.0f / (float)prev->size);
-//        math::uniform(weights.values, -stdv, stdv );
-//        math::uniform(bias   .values, -stdv, stdv );
+        math::kaiming<float>(weights.values, prev->size);
+        math::fill<float>(bias.values, 0.0);
 
         weights.values >> data::GPU;
-        bias   .values >> data::GPU;
+        bias.values >> data::GPU;
     }
 
     void compile(size_t batch_size) override {
@@ -42,24 +38,22 @@ struct Affine : public nn::Layer {
     }
 
     void forward() override {
-        operations::affine<data::GPU>(
-            prev->dense_output.values,
-            weights.values,
-            bias.values,
-            dense_output.values);
+        operations::affine<data::GPU>(prev->dense_output.values,
+                                      weights.values,
+                                      bias.values,
+                                      dense_output.values);
     }
     void backward() override {
-        operations::affine_bp<data::GPU>(
-            prev->dense_output.values,
-            prev->dense_output.gradients,
-            weights.values,
-            weights.gradients,
-            bias.gradients,
-            dense_output.gradients);
+        operations::affine_bp<data::GPU>(prev->dense_output.values,
+                                         prev->dense_output.gradients,
+                                         weights.values,
+                                         weights.gradients,
+                                         bias.gradients,
+                                         dense_output.gradients);
     }
 
     std::vector<Tape*> params() override {
-        return std::vector<Tape*>{&weights, &bias};
+        return std::vector<Tape*> {&weights, &bias};
     }
 };
 }    // namespace nn

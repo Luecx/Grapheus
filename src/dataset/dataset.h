@@ -3,7 +3,8 @@
 #include <cstdint>
 #include <vector>
 #include <algorithm>
-#include <random>
+
+#include "../math/random.h"
 
 namespace dataset {
 
@@ -39,7 +40,7 @@ struct DataSet {
 
     // shuffle
     void shuffle() {
-        std::shuffle(positions.begin(), positions.end(), std::mt19937(std::random_device()()));
+        std::shuffle(positions.begin(), positions.end(), math::twister);
     }
 };
 
