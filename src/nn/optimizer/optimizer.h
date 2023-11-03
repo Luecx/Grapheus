@@ -5,6 +5,8 @@ namespace nn {
 
 struct Optimizer {
 
+    int step_ = 0;
+
     protected:
     std::vector<OptimizerEntry> entries {};
 
@@ -13,8 +15,10 @@ struct Optimizer {
         : entries(entries) {}
 
     void step(float lr) {
+        step_++;
+
         for (int i = 0; i < entries.size(); i++) {
-            this->step(entries[i], i, lr);
+            this->step(entries[i], i, lr * entries[i].m_lr_scalar);
         }
     }
 

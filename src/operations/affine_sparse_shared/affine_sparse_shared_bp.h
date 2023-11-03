@@ -69,7 +69,6 @@ inline void affine_sparse_shared_bp(
     ASSERT(res_grd.m == M * 2);
     ASSERT(bia_grd.m == M * 2);
 
-    ASSERT(mat_grd.first<DEV>())
     ASSERT(inp1.values.address<DEV>())
     ASSERT(inp2.values.address<DEV>())
     ASSERT(bia_grd.first<DEV>())

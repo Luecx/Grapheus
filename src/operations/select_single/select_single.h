@@ -58,7 +58,7 @@ void select_single(const data::DenseMatrix<float>& input,
                    const data::DenseMatrix<float>& indices) {
 
     // clang-format on
-    const size_t choices = input.m / output.m;
+    [[maybe_unused]] const size_t choices = input.m / output.m;
 
     // assert that memory is allocated for the output
     // cant really check that for the input pointers

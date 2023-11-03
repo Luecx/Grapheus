@@ -3,8 +3,7 @@
 #include "../../operations/operations.h"
 #include "layer.h"
 
-namespace nn{
-
+namespace nn {
 
 struct AffineBatched : public nn::Layer {
 
@@ -26,16 +25,18 @@ struct AffineBatched : public nn::Layer {
         weights = nn::Tape(size, prev->size / batches);
         bias    = nn::Tape(size, 1);
         weights.malloc();
-        bias   .malloc();
+        bias.malloc();
 
-//        float stdv = sqrt(1.0f / (float)prev->size);
-//        math::uniform(weights.values, -stdv, stdv );
-//        math::uniform(bias   .values, -stdv, stdv );
+        math::kaiming<float>(weights.values, prev->size / batches);
+        math::fill<float>(bias.values, 0.0f);
 
-        float stdv = sqrt(2.0f / (float)(prev->size / batches));
-        math::normal(weights.values, 0.0f, stdv );
+        const size_t out_batch_size = size / batches;
+        for (size_t i = out_batch_size; i < size; i++)
+            for (size_t j = 0; j < prev->size / batches; j++)
+                weights.values(i, j) = weights.values(i % out_batch_size, j);
 
         weights.values >> data::GPU;
+        bias.values >> data::GPU;
     }
 
     void compile(size_t batch_size) override {
@@ -49,9 +50,9 @@ struct AffineBatched : public nn::Layer {
     void forward() override {
         Layer::forward();
         operations::affine_batched<data::GPU>(prev->dense_output.values,
-                                              weights           .values,
-                                              bias              .values,
-                                              dense_output      .values,
+                                              weights.values,
+                                              bias.values,
+                                              dense_output.values,
                                               batches);
     }
     void backward() override {
@@ -59,17 +60,16 @@ struct AffineBatched : public nn::Layer {
 
         operations::affine_batched_bp<data::GPU>(prev->dense_output.values,
                                                  prev->dense_output.gradients,
-                                                 weights           .values,
-                                                 weights           .gradients,
-                                                 bias              .gradients,
-                                                 dense_output      .gradients,
+                                                 weights.values,
+                                                 weights.gradients,
+                                                 bias.gradients,
+                                                 dense_output.gradients,
                                                  batches);
-
     }
 
     std::vector<Tape*> params() override {
-        return std::vector<Tape*>{&weights, &bias};
+        return std::vector<Tape*> {&weights, &bias};
     }
 };
 
-}
+}    // namespace nn
