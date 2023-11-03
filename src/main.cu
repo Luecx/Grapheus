@@ -41,7 +41,7 @@ struct ChessModel : nn::Model {
 
             for (int b = 1; b <= epoch_size / loader.batch_size; b++) {
                 auto* ds = loader.next();
-                setup_inputs_and_outputs(ds, 0.10);
+                setup_inputs_and_outputs(ds, 0.00);
 
                 float batch_loss = batch();
                 total_epoch_loss += batch_loss;
@@ -53,12 +53,12 @@ struct ChessModel : nn::Model {
                     prev_print_tm = elapsed;
 
                     printf("\rep = [%4d], epoch_loss = [%1.8f], batch = [%5d], batch_loss = [%1.8f], "
-                           "speed = [%7d pos/s], time = [%3ds]",
+                           "speed = [%7.2f it/s], time = [%3ds]",
                            i,
                            epoch_loss,
                            b,
                            batch_loss,
-                           (int) (1000.0f * loader.batch_size * b / elapsed),
+                           1000.0f * b / elapsed,
                            (int) (elapsed / 1000.0f));
                     std::cout << std::flush;
                 }
@@ -280,7 +280,7 @@ struct BerserkModel : ChessModel {
                                  1e-8,
                                  5 * 16384));
 
-        set_file_output("/media/jhonnold/Data/berserk-nets/test");
+        set_file_output("/mnt/data/berserk-nets/exp46");
 
         add_quantization(Quantizer {
             "" + std::to_string((int) quant_one) + "_" + std::to_string((int) quant_two),
@@ -394,7 +394,7 @@ int main() {
     std::vector<std::string> files {};
     std::vector<std::string> validation_files {};
 
-    for (const auto& entry : fs::directory_iterator("/media/jhonnold/Data/berserk-bins/data212")) {
+    for (const auto& entry : fs::directory_iterator("/mnt/data/berserk-bins/data212")) {
         const std::string path = entry.path().string();
         if (path.find("valid") != std::string::npos) {
             std::cout << "Specifying " << path << " as validation data!" << std::endl;
@@ -413,7 +413,7 @@ int main() {
     validation_loader.start();
 
     BerserkModel model {};
-    // model.load_weights("C:/Programming/berserk-nets/exp42/weights/1000.state");
+    model.load_weights("/mnt/data/berserk-nets/exp45/weights/1000.state");
     model.train(loader, validation_loader, 1000);
 
     loader.kill();
