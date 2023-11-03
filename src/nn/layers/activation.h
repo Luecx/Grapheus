@@ -1,6 +1,7 @@
 #pragma once
 
 #include "layer.h"
+#include "../../operations/operations.h"
 
 namespace nn {
 struct ReLU : public Layer {

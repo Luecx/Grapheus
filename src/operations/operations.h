@@ -27,6 +27,8 @@
 
 #include "ax_p_by/ax_p_by.h"
 #include "ax_p_by/ax_p_by_bp.h"
+#include "elemwise_mul/elemwise_mul.h"
+#include "elemwise_mul/elemwise_mul_bp.h"
 
 #include "mean_power_error/mpe.h"
 

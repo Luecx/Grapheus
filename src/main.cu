@@ -340,21 +340,40 @@ struct KoiModel : ChessModel {
 
 int main() {
     init();
-    std::vector<std::string> files {};
 
-    for (int i = 1; i <= 32; i++) {
-        files.push_back(R"(D:\Koivisto Resourcen\Training Data Shuffled + Berserk\koi_ber_)"
-                        + std::to_string(i) + ".bin");
-    }
-    dataset::BatchLoader<chess::Position> loader {files, 16384};
-    loader.start();
+    DenseInput inp{8};
+    ChunkwiseMul m{&inp, 4};
 
-    KoiModel model {};
-    model.load_weights("../res/run4/weights/680.state");
-//    model.quantize("680_32_128.net");
-//    model.load_weights(R"(F:\OneDrive\ProgrammSpeicher\CLionProjects\CudAD\resources\runs\experiment_37\weights-epoch1000.nnue)");
-//    model.train(loader, 1000, 1e8);
-    model.distribution(loader, 32);
+    inp.compile(8);
+    m  .compile(8);
+
+    math::uniform(inp.dense_output.values, 0.f, 1.f);
+
+    inp.dense_output.values >> GPU;
+    inp.forward();
+    m.forward();
+
+    m.dense_output.values >> CPU;
+
+    std::cout << inp.dense_output.values << std::endl;
+    std::cout << m  .dense_output.values << std::endl;
+
+//    init();
+//    std::vector<std::string> files {};
+//
+//    for (int i = 1; i <= 32; i++) {
+//        files.push_back(R"(D:\Koivisto Resourcen\Training Data Shuffled + Berserk\koi_ber_)"
+//                        + std::to_string(i) + ".bin");
+//    }
+//    dataset::BatchLoader<chess::Position> loader {files, 16384};
+//    loader.start();
+//
+//    KoiModel model {};
+//    model.load_weights("../res/run4/weights/680.state");
+////    model.quantize("680_32_128.net");
+////    model.load_weights(R"(F:\OneDrive\ProgrammSpeicher\CLionProjects\CudAD\resources\runs\experiment_37\weights-epoch1000.nnue)");
+////    model.train(loader, 1000, 1e8);
+//    model.distribution(loader, 32);
 
 //    model.test_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 //    model.compile(16384);
@@ -383,8 +402,8 @@ int main() {
 
 
 //    model.train(loader, 1000, 1e8);
-    loader.kill();
-
+//    loader.kill();
+//
     close();
     return 0;
 }
