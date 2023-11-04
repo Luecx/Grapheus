@@ -11,7 +11,9 @@ __global__ void elemwise_mul_bp_kernel(const float* __restrict__ inp1,
                                        const float* __restrict__ out_grad,
                                        int rows,
                                        int cols,
-                                       int ld) {
+                                       int ld_inp1,
+                                       int ld_inp2,
+                                       int ld_out) {
 
     // Calculate the row and column indices of the element
     int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -19,14 +21,16 @@ __global__ void elemwise_mul_bp_kernel(const float* __restrict__ inp1,
 
     if (row < rows && col < cols) {
         // Calculate the indices using the MATRIX_INDEX macro
-        int idx = MATRIX_INDEX(ld, row, col);
+        int idx_inp1 = MATRIX_INDEX(ld_inp1, row, col);
+        int idx_inp2 = MATRIX_INDEX(ld_inp2, row, col);
+        int idx_out  = MATRIX_INDEX(ld_out , row, col);
 
         // Compute the gradients
         if (inp1_grad != nullptr) {
-            inp1_grad[idx] = inp2[idx] * out_grad[idx];
+            inp1_grad[idx_inp1] = inp2[idx_inp2] * out_grad[idx_out];
         }
         if (inp2_grad != nullptr) {
-            inp2_grad[idx] = inp1[idx] * out_grad[idx];
+            inp2_grad[idx_inp2] = inp1[idx_inp1] * out_grad[idx_out];
         }
     }
 }
@@ -58,7 +62,7 @@ inline void elemwise_mul_bp(const data::DenseMatrix<float>& inp1,
             inp2     .first<data::GPU>(),
             inp2_grad.first<data::GPU>(),
             out_grad .first<data::GPU>(),
-            inp1.m, inp1.n, inp1.ld);
+            inp1.m, inp1.n, inp1.ld, inp2.ld, out_grad.ld);
         // Remember to check for kernel errors here as usual
     } else {
         // Use CPU implementation
