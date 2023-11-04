@@ -366,6 +366,7 @@ DenseMatrix<TYPE> DenseMatrix<TYPE>::operator/(TYPE val) {
 template<typename TYPE>
 DenseMatrix<TYPE>& DenseMatrix<TYPE>::operator=(TYPE value){
     for_each([&value](size_t m, size_t n, float& v) {v = value;});
+    return *this;
 }
 
 template<typename TYPE>
