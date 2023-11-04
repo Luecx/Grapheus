@@ -6,17 +6,19 @@
 
 namespace operations {
 
-__global__ void affine_sparse_bp_kernel(float* __restrict__ mat_grd,
+// clang-format off
+__global__ void affine_sparse_bp_kernel(      float*  __restrict__ mat_grd,
                                         const size_t* __restrict__ inp_col_indices,
-                                        const size_t inp_col_max_entries,
-                                        float* __restrict__ bias_grd,
-                                        const float* __restrict__ res,
-                                        const float* __restrict__ res_grd,
+                                        const size_t               inp_col_max_entries,
+                                              float*  __restrict__ bia_grd,
+                                        const float*  __restrict__ res,
+                                        const float*  __restrict__ res_grd,
                                         const size_t m,
                                         const size_t n,
                                         const size_t lda,
                                         const size_t ldc,
                                         const float  ft_regularization);
+// clang-format on
 
 /**
  * Performs backpropagation for following sparse matrix multiplication followed by bias addition:

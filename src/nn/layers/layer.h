@@ -25,9 +25,9 @@ struct Layer {
     virtual LayerOutputType output_type() {
         return DENSE;
     }
+
     // main call to configure the layer and initialise all matrices
     // should also call compile_output which sets the output matrix
-    // it is seperated
     virtual void compile(size_t batch_size) = 0;
     virtual void compile_suboutput(size_t batch_size, const Tape& output) {
         dense_output = output;
@@ -48,7 +48,7 @@ struct Layer {
         output_used_counter++;
         ERROR(output_used_counter <= 1);
     }
-    void unused() {
+    void unuse() {
         output_used_counter--;
     }
 

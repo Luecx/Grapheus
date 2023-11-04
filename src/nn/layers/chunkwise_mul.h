@@ -4,7 +4,7 @@ namespace nn {
 
 #include "layer.h"
 #include "../../data/matrix_dense.h"
-#include "operations/operations.h"
+#include "../../operations/operations.h"
 
 struct ChunkwiseMul : public Layer {
     Layer* prev;
