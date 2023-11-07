@@ -3,6 +3,7 @@
 #include "../../data/matrix_dense.h"
 #include "../../data/matrix_sparse.h"
 #include "../affine/affine_bp.h"
+#include "../gradient_operation.h"
 
 namespace operations {
 
@@ -61,7 +62,7 @@ inline void affine_sparse_bp(data::DenseMatrix<float>& wgt_grd,
 
         dim3          block(block_size_x, block_size_y);
         dim3          grid(std::ceil((float) res_grd.n / block_size_x),
-                  std::ceil((float) res_grd.m / block_size_y));
+                           std::ceil((float) res_grd.m / block_size_y));
 
         affine_sparse_bp_kernel<<<grid, block>>>(wgt_grd.first<DEV>(),
                                                  inp.values.address<DEV>(),

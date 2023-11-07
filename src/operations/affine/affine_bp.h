@@ -4,6 +4,7 @@
 
 #pragma once
 #include "../../data/matrix_dense.h"
+#include "../gradient_operation.h"
 
 namespace operations {
 __device__ void inline reduce_warp(volatile float* sdata, size_t tid) {
@@ -55,8 +56,6 @@ __global__ inline void reduce_row(const float* mat,
         if(threadIdx.x == 0)
             atomicAdd(&res[row], sdata[threadIdx.y][0]);
     }
-
-
 }
 
 /**
@@ -85,21 +84,22 @@ inline void affine_bp(const data::DenseMatrix<float>& inp,
                       const data::DenseMatrix<float>& wgt,
                             data::DenseMatrix<float>& wgt_grd,
                             data::DenseMatrix<float>& bia_grd,
-                            data::DenseMatrix<float>& out_grd) { // TODO: add const
+                            data::DenseMatrix<float>& out_grd,
+                      GradientOperation grad_operation = SET) {
     // clang-format on
     if (!data::is_gpu(DEV))
         ERROR(false);
 
     // beta = 0 indicates that we dont add to the gradients but simply replace them
     const float alpha = 1;
-    const float beta  = 0;
+    const float beta  = grad_operation == SET ? 0:1;
 
     // step 1. Compute gradients of bias using a parallel reduction
     constexpr int block_size_x = 128;
     constexpr int block_size_y = 8;
     dim3          block(block_size_x, block_size_y);
     dim3          grid(std::ceil((float) out_grd.n / block_size_x),
-              std::ceil((float) out_grd.m / block_size_y));
+                       std::ceil((float) out_grd.m / block_size_y));
 
 //    cudaMemset(bia_grd.first<DEV>(), 0, sizeof(float) * bia_grd.m);
     reduce_row<<<grid, block>>>(out_grd.first<DEV>(),

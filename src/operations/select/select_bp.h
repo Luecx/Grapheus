@@ -5,6 +5,7 @@
 #pragma once
 #include "../../data/matrix_dense.h"
 #include "../../data/sarray.h"
+#include "../gradient_operation.h"
 
 namespace operations {
 
@@ -15,7 +16,8 @@ __global__ void select_bp_kernel(
     const float*  __restrict__ indices,
     unsigned int m,
     unsigned int n,
-    unsigned int ld) {
+    unsigned int ld,
+    GradientOperation grad_op) {
     // clang-format on
 
     int thread_n = blockIdx.x * blockDim.x + threadIdx.x;
@@ -27,15 +29,21 @@ __global__ void select_bp_kernel(
     float* input = inputs[thread_z];
     int    idx   = int(indices[thread_n]);
 
-    if (idx == thread_z) {
-        for (int i = 0; i < m; i++) {
-            input[MATRIX_INDEX(ld, i, thread_n)] = output[MATRIX_INDEX(ld, i, thread_n)];
+    if (grad_op == SET) {
+        if (idx == thread_z) {
+            for (int i = 0; i < m; i++) {
+                input[MATRIX_INDEX(ld, i, thread_n)] = output[MATRIX_INDEX(ld, i, thread_n)];
+            }
+        } else {
+            for (int i = 0; i < m; i++) {
+                inputs[MATRIX_INDEX(ld, i, thread_n)] = 0;
+            }
         }
     } else {
-        // TODO: reconsider
-        // NOTE: technically correct but in reality not needed
-        for (int i = 0; i < m; i++) {
-            inputs[MATRIX_INDEX(ld, i, thread_n)] = 0;
+        if (idx == thread_z) {
+            for (int i = 0; i < m; i++) {
+                input[MATRIX_INDEX(ld, i, thread_n)] += output[MATRIX_INDEX(ld, i, thread_n)];
+            }
         }
     }
 }
@@ -48,7 +56,8 @@ void select_bp_host(
     unsigned int heads,
     unsigned int m,
     unsigned int n,
-    unsigned int ld) {
+    unsigned int ld,
+    GradientOperation grad_op) {
     // clang-format on
     for (int x = 0; x < n; x++) {
         size_t input_head = int(indices[x]);
@@ -56,9 +65,11 @@ void select_bp_host(
             float* input = inputs[z];
             for (int y = 0; y < m; y++) {
                 if (input_head == z) {
-                    input[MATRIX_INDEX(ld, y, x)] = output[MATRIX_INDEX(ld, y, x)];
+                    input[MATRIX_INDEX(ld, y, x)] = output[MATRIX_INDEX(ld, y, x)]
+                                                  + input[MATRIX_INDEX(ld, y, x)] * grad_op;
                 } else {
-                    input[MATRIX_INDEX(ld, y, x)] = 0;
+                    if (grad_op == SET)
+                        input[MATRIX_INDEX(ld, y, x)] = 0;
                 }
             }
         }
@@ -69,7 +80,8 @@ void select_bp_host(
 template<data::Device DEV>
 void select_bp(      data::SArray     <float*>& inputs,
                const data::DenseMatrix<float >& output,
-               const data::SArray     <float >& indices) {
+               const data::SArray     <float >& indices,
+               GradientOperation grad_op = SET) {
     // clang-format on
     if constexpr (data::is_gpu(DEV)) {
         // a block has 128 x 1 threads
@@ -81,7 +93,8 @@ void select_bp(      data::SArray     <float*>& inputs,
                                           indices.address<DEV>(),
                                           output.m,
                                           output.n,
-                                          output.ld);
+                                          output.ld,
+                                          grad_op);
     } else {
         select_bp_host(inputs .address<DEV>(),
                        output .first  <DEV>(),
@@ -89,7 +102,8 @@ void select_bp(      data::SArray     <float*>& inputs,
                        inputs.size(),
                        output.m,
                        output.n,
-                       output.ld);
+                       output.ld,
+                       grad_op);
     }
 }
 

@@ -5,6 +5,11 @@
 #pragma once
 namespace operations {
 
+#include "../../data/matrix_dense.h"
+#include "../../data/matrix_sparse.h"
+#include "../affine/affine_bp.h"
+#include "../gradient_operation.h"
+
 // clang-format off
 /**
  * @brief Compute the gradients of the batched affine transformation on the GPU using backpropagation.
@@ -50,7 +55,8 @@ inline void affine_batched_bp(const data::DenseMatrix<float>& inp,
                                     data::DenseMatrix<float>& wgt_grd,
                                     data::DenseMatrix<float>& bia_grd,
                               const data::DenseMatrix<float>& out_grd,
-                              const size_t batches) {
+                              const size_t batches,
+                              GradientOperation grad_operation = SET) {
 
     const size_t m = out_grd.m / batches;
     const size_t n = out_grd.n;
@@ -91,7 +97,7 @@ inline void affine_batched_bp(const data::DenseMatrix<float>& inp,
         out_grd.ld);
 
     const float alpha = 1;
-    const float beta  = 0;
+    const float beta  = grad_operation == SET ? 0:1;
     // step 2. compute gradients of weights
     // wgt_grd = out_grd * inp^T
     cublasSgemmStridedBatched(
