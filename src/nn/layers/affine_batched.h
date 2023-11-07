@@ -7,17 +7,19 @@ namespace nn {
 
 struct AffineBatched : public nn::Layer {
 
-    size_t     batches;
-    nn::Layer* prev;
+    size_t            batches;
+    Layer*            prev;
+    int               use_id;
+    GradientOperation grad_op;
 
-    nn::Tape   weights {0, 0};
-    nn::Tape   bias {0, 0};
+    nn::Tape          weights {0, 0};
+    nn::Tape          bias {0, 0};
 
     AffineBatched(Layer* prev, size_t size, size_t batches)
         : Layer(size)
         , batches(batches)
         , prev(prev) {
-        prev->use();
+        use_id = prev->use();
         ERROR(prev->size % batches == 0);
         ERROR(size % batches == 0);
 
@@ -41,10 +43,12 @@ struct AffineBatched : public nn::Layer {
 
     void compile(size_t batch_size) override {
         compile_suboutput(batch_size, nn::Tape(size, batch_size));
+        this->grad_op = this->use_id == prev->used() ? SET : INCREMENT;
     }
 
     void compile_suboutput(size_t batch_size, const nn::Tape& output) override {
         Layer::compile_suboutput(batch_size, output);
+        this->grad_op = this->use_id == prev->used() ? SET : INCREMENT;
     }
 
     void forward() override {
@@ -64,7 +68,8 @@ struct AffineBatched : public nn::Layer {
                                                  weights.gradients,
                                                  bias.gradients,
                                                  dense_output.gradients,
-                                                 batches);
+                                                 batches,
+                                                 grad_op);
     }
 
     std::vector<Tape*> params() override {

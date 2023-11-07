@@ -3,12 +3,14 @@
 //
 
 #pragma once
-namespace operations {
 
 #include "../../data/matrix_dense.h"
 #include "../../data/matrix_sparse.h"
 #include "../affine/affine_bp.h"
 #include "../gradient_operation.h"
+
+namespace operations {
+
 
 // clang-format off
 /**

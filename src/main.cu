@@ -340,17 +340,18 @@ struct KoiModel : ChessModel {
 
 int main() {
     init();
-    std::vector<std::string> files {};
-    for (int i = 1; i <= 32; i++) {
-        files.push_back(R"(D:\Koivisto Resourcen\Training Data Shuffled + Berserk\koi_ber_)"
-                        + std::to_string(i) + ".bin");
-    }
-    dataset::BatchLoader<chess::Position> loader {files, 16384};
-    loader.start();
 
-    KoiModel model {};
-    model.train(loader, 1000, 1e8);
-    loader.kill();
+//    std::vector<std::string> files {};
+//    for (int i = 1; i <= 32; i++) {
+//        files.push_back(R"(D:\Koivisto Resourcen\Training Data Shuffled + Berserk\koi_ber_)"
+//                        + std::to_string(i) + ".bin");
+//    }
+//    dataset::BatchLoader<chess::Position> loader {files, 16384};
+//    loader.start();
+//
+//    KoiModel model {};
+//    model.train(loader, 1000, 1e8);
+//    loader.kill();
 
     close();
     return 0;

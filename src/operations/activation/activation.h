@@ -1,6 +1,5 @@
 #pragma once
 
-#pragma once
 #include "../../data/device.h"
 #include "../../data/matrix_dense.h"
 #include "../gradient_operation.h"

@@ -14,10 +14,10 @@ __global__ void select_bp_kernel(
           float** __restrict__ inputs,
           float*  __restrict__ output,
     const float*  __restrict__ indices,
+    const GradientOperation*  __restrict__ grad_ops,
     unsigned int m,
     unsigned int n,
-    unsigned int ld,
-    GradientOperation grad_op) {
+    unsigned int ld) {
     // clang-format on
 
     int thread_n = blockIdx.x * blockDim.x + threadIdx.x;
@@ -28,6 +28,7 @@ __global__ void select_bp_kernel(
 
     float* input = inputs[thread_z];
     int    idx   = int(indices[thread_n]);
+    auto grad_op = grad_ops[idx];
 
     if (grad_op == SET) {
         if (idx == thread_z) {
@@ -53,11 +54,11 @@ void select_bp_host(
           float** __restrict__ inputs,
           float*  __restrict__ output,
     const float*  __restrict__ indices,
+    const GradientOperation*  __restrict__ grad_ops,
     unsigned int heads,
     unsigned int m,
     unsigned int n,
-    unsigned int ld,
-    GradientOperation grad_op) {
+    unsigned int ld) {
     // clang-format on
     for (int x = 0; x < n; x++) {
         size_t input_head = int(indices[x]);
@@ -66,9 +67,9 @@ void select_bp_host(
             for (int y = 0; y < m; y++) {
                 if (input_head == z) {
                     input[MATRIX_INDEX(ld, y, x)] = output[MATRIX_INDEX(ld, y, x)]
-                                                  + input[MATRIX_INDEX(ld, y, x)] * grad_op;
+                                                  + input[MATRIX_INDEX(ld, y, x)] * grad_ops[input_head];
                 } else {
-                    if (grad_op == SET)
+                    if (grad_ops[input_head] == SET)
                         input[MATRIX_INDEX(ld, y, x)] = 0;
                 }
             }
@@ -81,29 +82,29 @@ template<data::Device DEV>
 void select_bp(      data::SArray     <float*>& inputs,
                const data::DenseMatrix<float >& output,
                const data::SArray     <float >& indices,
-               GradientOperation grad_op = SET) {
+               const data::SArray     <GradientOperation>& grad_ops) {
     // clang-format on
     if constexpr (data::is_gpu(DEV)) {
         // a block has 128 x 1 threads
         dim3 block(128, 1);
         // we need to spawn N threads in the y for N outputs
         dim3 grid(std::ceil((float) output.n / 128.0f), inputs.size());
-        select_bp_kernel<<<grid, block>>>(inputs .address<DEV>(),
-                                          output .first  <DEV>(),
-                                          indices.address<DEV>(),
+        select_bp_kernel<<<grid, block>>>(inputs  .address<DEV>(),
+                                          output  .first  <DEV>(),
+                                          indices .address<DEV>(),
+                                          grad_ops.address<DEV>(),
                                           output.m,
                                           output.n,
-                                          output.ld,
-                                          grad_op);
+                                          output.ld);
     } else {
-        select_bp_host(inputs .address<DEV>(),
-                       output .first  <DEV>(),
-                       indices.address<DEV>(),
+        select_bp_host(inputs  .address<DEV>(),
+                       output  .first  <DEV>(),
+                       indices .address<DEV>(),
+                       grad_ops.address<DEV>(),
                        inputs.size(),
                        output.m,
                        output.n,
-                       output.ld,
-                       grad_op);
+                       output.ld);
     }
 }
 

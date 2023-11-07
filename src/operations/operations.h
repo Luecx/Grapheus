@@ -1,5 +1,7 @@
 #pragma once
 
+#include "gradient_operation.h"
+
 #include "distribute/distribute.h"
 #include "distribute/distribute_bp.h"
 #include "select/select.h"

@@ -8,7 +8,9 @@ namespace nn {
 
 struct Affine : public nn::Layer {
 
-    Layer* prev;
+    Layer*            prev;
+    int               use_id;
+    GradientOperation grad_op;
 
     // weights and biases
     Tape weights {0, 0};
@@ -17,7 +19,7 @@ struct Affine : public nn::Layer {
     Affine(Layer* prev, size_t size)
         : Layer(size)
         , prev(prev) {
-        prev->use();
+        use_id = prev->use();
 
         weights = Tape(size, prev->size);
         weights.malloc();
@@ -33,8 +35,8 @@ struct Affine : public nn::Layer {
     }
 
     void compile(size_t batch_size) override {
-        // set output matrix
         compile_suboutput(batch_size, Tape(size, batch_size));
+        this->grad_op = this->use_id == prev->used() ? SET : INCREMENT;
     }
 
     void forward() override {
@@ -49,7 +51,8 @@ struct Affine : public nn::Layer {
                                          weights.values,
                                          weights.gradients,
                                          bias.gradients,
-                                         dense_output.gradients);
+                                         dense_output.gradients,
+                                         grad_op);
     }
 
     std::vector<Tape*> params() override {
