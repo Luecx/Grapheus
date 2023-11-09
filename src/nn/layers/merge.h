@@ -17,15 +17,20 @@ struct Merge : public Layer {
     Layer* l1;
     Layer* l2;
 
+    int use_id_1;
+    int use_id_2;
+
     Merge(Layer* l1, Layer* l2)
         : Layer(l1->size + l2->size)
         , l1(l1)
         , l2(l2) {
-        l1->use();
-        l2->use();}
+        use_id_1 = l1->use();
+        use_id_2 = l2->use();}
 
     void compile(size_t batch_size) override {
         this->compile_suboutput(batch_size, Tape(size, batch_size));
+        ERROR(use_id_1 == l1->used());
+        ERROR(use_id_2 == l2->used());
     }
 
     void compile_suboutput(size_t batch_size, const Tape& output) override {

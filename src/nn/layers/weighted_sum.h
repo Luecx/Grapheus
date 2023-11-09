@@ -43,7 +43,9 @@ struct WeightedSum : public Layer {
                                           prev_2->dense_output.gradients,
                                           dense_output.gradients,
                                           alpha,
-                                          beta);
+                                          beta,
+                                          grad_op_1,
+                                          grad_op_2);
     }
 };
 

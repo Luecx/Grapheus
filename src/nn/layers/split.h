@@ -43,9 +43,12 @@ struct SplitHead : public Layer {
 
 struct Split : public Layer {
     std::vector<SplitHead> heads;
+    Layer* prev;
+    int use_id;
+
 
     explicit Split(Layer* prev, const std::vector<size_t>& head_sizes)
-        : Layer(prev->size) {
+        : Layer(prev->size), prev(prev) {
         size_t total_assigned_size = 0;
         for (size_t i = 0; i < head_sizes.size(); ++i) {
             heads.emplace_back(prev, head_sizes[i], total_assigned_size);
@@ -55,7 +58,7 @@ struct Split : public Layer {
         size_t remaining_size = prev->size - total_assigned_size;
         heads.emplace_back(prev, remaining_size, total_assigned_size);
 
-        prev->use();
+        use_id = prev->use();
     }
 
     SplitHead* operator[](size_t index) {
@@ -66,6 +69,7 @@ struct Split : public Layer {
     }
 
     void compile(size_t batch_size) override {
+        ERROR(use_id == prev->used()); // make sure the operation would be "set"
         for (auto& head : heads) {
             head.compile(batch_size);
         }

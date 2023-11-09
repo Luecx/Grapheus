@@ -6,8 +6,8 @@
 namespace operations {
 
 DEFINE_ACTIVATION(linear
-                  , A[ida];
-                  , B_grd[idb];);
+                  , A[ida] * scalar;
+                  , B_grd[idb] * scalar;);
 
 DEFINE_ACTIVATION(sigmoid
                   , 1.0f / (1 + exp(-A[ida] * scalar));
