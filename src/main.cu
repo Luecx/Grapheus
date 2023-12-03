@@ -280,11 +280,11 @@ struct BerserkModel : ChessModel {
                                  1e-8,
                                  5 * 16384));
 
-        set_file_output("/mnt/data/berserk-nets/exp46");
+        set_file_output("/mnt/data/berserk-nets/exp53");
 
         add_quantization(Quantizer {
             "" + std::to_string((int) quant_one) + "_" + std::to_string((int) quant_two),
-            10,
+            50,
             QuantizerEntry<int16_t>(&ft->weights.values, quant_one, true),
             QuantizerEntry<int16_t>(&ft->bias.values, quant_one),
             QuantizerEntry<int8_t>(&l1->weights.values, quant_two),
@@ -294,7 +294,7 @@ struct BerserkModel : ChessModel {
             QuantizerEntry<float>(&pos_eval->weights.values, 1.0),
             QuantizerEntry<float>(&pos_eval->bias.values, quant_two),
         });
-        set_save_frequency(10);
+        set_save_frequency(50);
     }
 
     inline int king_square_index(int relative_king_square) {
@@ -336,7 +336,7 @@ struct BerserkModel : ChessModel {
 
         auto& target = m_loss->target;
 
-#pragma omp parallel for schedule(static) num_threads(16)
+#pragma omp parallel for schedule(static) num_threads(8)
         for (int b = 0; b < positions->header.entry_count; b++) {
             chess::Position* pos = &positions->positions[b];
             // fill in the inputs and target values
@@ -394,7 +394,7 @@ int main() {
     std::vector<std::string> files {};
     std::vector<std::string> validation_files {};
 
-    for (const auto& entry : fs::directory_iterator("/mnt/data/berserk-bins/data212")) {
+    for (const auto& entry : fs::directory_iterator("/mnt/data/berserk-bins/data216")) {
         const std::string path = entry.path().string();
         if (path.find("valid") != std::string::npos) {
             std::cout << "Specifying " << path << " as validation data!" << std::endl;
@@ -413,7 +413,7 @@ int main() {
     validation_loader.start();
 
     BerserkModel model {};
-    model.load_weights("/mnt/data/berserk-nets/exp45/weights/1000.state");
+    model.load_weights("/mnt/data/berserk-nets/exp51/weights/1000.state");
     model.train(loader, validation_loader, 1000);
 
     loader.kill();
