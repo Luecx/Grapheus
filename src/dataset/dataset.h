@@ -1,16 +1,14 @@
 #pragma once
 
+#include "../math/random.h"
+
+#include <algorithm>
 #include <cstdint>
 #include <vector>
-#include <algorithm>
-
-#include "../math/random.h"
 
 namespace dataset {
 
-struct DataSetEntry {
-
-};
+struct DataSetEntry {};
 
 struct DataSetHeader {
     uint64_t entry_count;
@@ -33,7 +31,7 @@ struct DataSet {
         header.entry_count += other.header.entry_count;
     }
 
-    void resize(size_t size){
+    void resize(size_t size) {
         positions.resize(size);
         header.entry_count = size;
     }

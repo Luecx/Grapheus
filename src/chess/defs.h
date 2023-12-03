@@ -1,6 +1,6 @@
 #pragma once
 #include <stdint.h>
-namespace chess{
+namespace chess {
 
 typedef uint64_t BB;
 typedef int8_t   Square;
@@ -14,4 +14,4 @@ typedef int8_t   Piece;
 typedef int8_t   PieceType;
 typedef bool     Side;
 typedef bool     Color;
-}
+}    // namespace chess

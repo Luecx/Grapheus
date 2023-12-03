@@ -27,7 +27,7 @@ struct Model {
     CSVWriter              m_csv {};
 
     size_t                 m_epoch          = 1;
-    size_t                 m_save_frequency = 1;
+    size_t                 m_save_frequency = 50;
     std::filesystem::path  m_path;
 
     Model() {
@@ -87,7 +87,6 @@ struct Model {
 
     // adds a quantization
     void add_quantization(const Quantizer& quantizer) {
-        ERROR(std::filesystem::exists(m_path));
         m_quantizers.push_back(quantizer);
         m_quantizers.back().set_path((m_path / std::filesystem::path("quant")).string());
     }

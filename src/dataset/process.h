@@ -17,13 +17,13 @@ namespace dataset {
  * @param out_format
  * @param num_files
  */
- template<typename TYPE>
+template<typename TYPE>
 inline void mix_and_shuffle_2(std::vector<std::string>& files,
                               const std::string&        out_format,
                               const int                 num_files = 32) {
 
-     static_assert(std::is_base_of<DataSetEntry, TYPE>::value,
-                   "TYPE must be a subclass of DataSetEntry");
+    static_assert(std::is_base_of<DataSetEntry, TYPE>::value,
+                  "TYPE must be a subclass of DataSetEntry");
 
     std::vector<FILE*> outfiles {};
     std::vector<int>   sizes {};

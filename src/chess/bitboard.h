@@ -6,7 +6,7 @@
 #include <immintrin.h>
 #endif
 
-namespace chess{
+namespace chess {
 
 /**
  * toggles the bit
@@ -14,7 +14,9 @@ namespace chess{
  * @param index     index of bit starting at the LST
  * @return          the manipulated number
  */
-inline void toggle(BB& number, Square index) { number ^= (1ULL << index); }
+inline void toggle(BB& number, Square index) {
+    number ^= (1ULL << index);
+}
 
 /**
  * set the bit
@@ -22,7 +24,9 @@ inline void toggle(BB& number, Square index) { number ^= (1ULL << index); }
  * @param index     index of bit starting at the LST
  * @return          the manipulated number
  */
-inline void set(BB& number, Square index) { number |= (1ULL << index); }
+inline void set(BB& number, Square index) {
+    number |= (1ULL << index);
+}
 
 /**
  * unset the bit
@@ -30,7 +34,9 @@ inline void set(BB& number, Square index) { number |= (1ULL << index); }
  * @param index     index of bit starting at the LST
  * @return          the manipulated number
  */
-inline void unset(BB& number, Square index) { number &= ~(1ULL << index); }
+inline void unset(BB& number, Square index) {
+    number &= ~(1ULL << index);
+}
 
 /**
  * get the bit
@@ -38,7 +44,9 @@ inline void unset(BB& number, Square index) { number &= ~(1ULL << index); }
  * @param index     index of bit starting at the LST
  * @return          the manipulated number
  */
-inline bool has(BB number, Square index) { return ((number >> index) & 1ULL) == 1; }
+inline bool has(BB number, Square index) {
+    return ((number >> index) & 1ULL) == 1;
+}
 
 /**
  * returns the index of the LSB
@@ -92,7 +100,9 @@ https:    // stackoverflow.com/questions/7669057/find-nth-set-bit-in-an-int
  * @param bb
  * @return
  */
-inline int popcount(BB bb) { return __builtin_popcountll(bb); }
+inline int popcount(BB bb) {
+    return __builtin_popcountll(bb);
+}
 
 /**
  * counts the ones inside the bitboard before the given index
@@ -107,7 +117,9 @@ inline int popcount(BB bb, int pos) {
  * @param number
  * @return
  */
-inline BB lsb_reset(BB number) { return number & (number - 1); }
+inline BB lsb_reset(BB number) {
+    return number & (number - 1);
+}
 
 /**
  * find fully set groups of 4
@@ -175,5 +187,4 @@ inline T mask() {
     return (T) (((T) 1 << N) - 1);
 }
 
-}
-
+}    // namespace chess

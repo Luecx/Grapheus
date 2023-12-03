@@ -5,7 +5,7 @@
 
 struct CSVWriter {
     std::ofstream csv_file {};
-    char separator;
+    char          separator;
 
     CSVWriter() = default;
 

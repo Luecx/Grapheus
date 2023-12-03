@@ -117,4 +117,3 @@ struct GPUArray : Array<Type> {
 };
 
 }    // namespace data
-

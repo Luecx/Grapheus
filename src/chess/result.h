@@ -1,6 +1,6 @@
 #pragma once
 
-namespace chess{
+namespace chess {
 
 enum GameResult { WIN = 1, DRAW = 0, LOSS = -1 };
 
@@ -9,4 +9,4 @@ struct Result {
     int8_t  wdl;
 };
 
-}
+}    // namespace chess
