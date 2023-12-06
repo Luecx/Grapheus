@@ -1,4 +1,4 @@
-
+#include "argparse.hpp"
 #include "chess/chess.h"
 #include "dataset/batchloader.h"
 #include "dataset/dataset.h"
@@ -274,7 +274,7 @@ struct BerserkModel : ChessModel {
                                  5 * 16384));
 
         add_quantization(Quantizer {
-            "quantized",
+            "quant",
             50,
             QuantizerEntry<int16_t>(&ft->weights.values, quant_one, true),
             QuantizerEntry<int16_t>(&ft->bias.values, quant_one),
@@ -376,7 +376,22 @@ struct BerserkModel : ChessModel {
     }
 };
 
-int main() {
+int main(int argc, char* argv[]) {
+    argparse::ArgumentParser program("Grapheus");
+
+    program.add_argument("data").required().help("Directory containing '.bin' or '.fin' files");
+    program.add_argument("-o", "--output").required().help("Output directory for network files");
+    program.add_argument("-p", "--previous").help("Previous state to load");
+
+    try {
+        program.parse_args(argc, argv);
+    } catch (const std::exception& err) {
+        std::cerr << err.what() << std::endl;
+        std::cerr << program;
+        std::exit(1);
+    }
+
+
     math::seed(0);
 
     init();
@@ -384,7 +399,7 @@ int main() {
     std::vector<std::string> files {};
     std::vector<std::string> validation_files {};
 
-    for (const auto& entry : fs::directory_iterator("/mnt/data/berserk-bins/data216")) {
+    for (const auto& entry : fs::directory_iterator(program.get("data"))) {
         const std::string path = entry.path().string();
         if (path.find("valid") != std::string::npos) {
             std::cout << "Specifying " << path << " as validation data!" << std::endl;
@@ -394,6 +409,9 @@ int main() {
             files.push_back(path);
         }
     }
+
+    if (validation_files.empty())
+        validation_files.push_back(files.at(0));
 
     const int                             batch_size = 16384;
     dataset::BatchLoader<chess::Position> loader {files, batch_size};
@@ -406,8 +424,12 @@ int main() {
     model.set_loss(MPE {2.5, true});
     model.set_lr_schedule(StepDecayLRSchedule {1e-3, 1.0 / 40.0, 500});
 
-    model.set_file_output("/mnt/data/berserk-nets/exp53");
-    model.load_weights("/mnt/data/berserk-nets/exp51/weights/1000.state");
+    auto output_dir = program.get("--output");
+    model.set_file_output(output_dir);
+
+    if (auto previous = program.present("--previous")) {
+        model.load_weights(*previous);
+    }
 
     model.train(loader, validation_loader, 1000);
 

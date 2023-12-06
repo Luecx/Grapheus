@@ -88,7 +88,7 @@ struct Model {
     // adds a quantization
     void add_quantization(const Quantizer& quantizer) {
         m_quantizers.push_back(quantizer);
-        m_quantizers.back().set_path((m_path / std::filesystem::path("quant")).string());
+        m_quantizers.back().set_path(m_path.string());
     }
 
     // sets the frequency at which states will be saved
