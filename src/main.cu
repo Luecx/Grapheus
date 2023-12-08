@@ -426,6 +426,8 @@ int main(int argc, char* argv[]) {
 
     auto output_dir = program.get("--output");
     model.set_file_output(output_dir);
+    for (auto quantizer : model.m_quantizers)
+        quantizer.set_path(model.m_path.string());
 
     if (auto previous = program.present("--previous")) {
         model.load_weights(*previous);
