@@ -25,10 +25,8 @@ struct ChessModel : nn::Model {
 
     // train function
     void train(dataset::BatchLoader<chess::Position>& loader,
-               dataset::BatchLoader<chess::Position>& validation_loader,
                int                                    epochs          = 1500,
-               int                                    epoch_size      = 1e8,
-               int                                    validation_size = 1e7) {
+               int                                    epoch_size      = 1e8) {
         this->compile(loader.batch_size);
 
         Timer t {};
@@ -37,7 +35,6 @@ struct ChessModel : nn::Model {
 
             uint64_t prev_print_tm         = 0;
             float    total_epoch_loss      = 0;
-            float    total_validation_loss = 0;
 
             for (int b = 1; b <= epoch_size / loader.batch_size; b++) {
                 auto* ds = loader.next();
@@ -67,20 +64,7 @@ struct ChessModel : nn::Model {
             std::cout << std::endl;
 
             float epoch_loss = total_epoch_loss / (epoch_size / loader.batch_size);
-
-            for (int b = 1; b <= validation_size / validation_loader.batch_size; b++) {
-                auto* ds = validation_loader.next();
-                setup_inputs_and_outputs(ds, 0.5);
-
-                total_validation_loss += loss();
-            }
-
-            float validation_loss =
-                total_validation_loss / (validation_size / validation_loader.batch_size);
-            printf("ep = [%4d], valid_loss = [%1.8f]", i, validation_loss);
-            std::cout << std::endl;
-
-            next_epoch(epoch_loss, validation_loss);
+            next_epoch(epoch_loss, 0.0);
         }
     }
 
@@ -391,34 +375,33 @@ int main(int argc, char* argv[]) {
         std::exit(1);
     }
 
-
     math::seed(0);
 
     init();
 
     std::vector<std::string> files {};
-    std::vector<std::string> validation_files {};
 
     for (const auto& entry : fs::directory_iterator(program.get("data"))) {
         const std::string path = entry.path().string();
-        if (path.find("valid") != std::string::npos) {
-            std::cout << "Specifying " << path << " as validation data!" << std::endl;
-            validation_files.push_back(path);
-        } else {
-            std::cout << "Specifying " << path << " as training data!" << std::endl;
-            files.push_back(path);
-        }
+        files.push_back(path);
     }
 
-    if (validation_files.empty())
-        validation_files.push_back(files.at(0));
+    uint64_t total_positions = 0;
+    for (const auto& file_path : files) {
+        FILE* fin = fopen(file_path.c_str(), "rb");
+
+        dataset::DataSetHeader h {};
+        fread(&h, sizeof(dataset::DataSetHeader), 1, fin);
+
+        total_positions += h.entry_count;
+        fclose(fin);
+    }
+
+    std::cout << "Loading a total of " << files.size() << " files with " << total_positions << " total position(s)" << std::endl;
 
     const int                             batch_size = 16384;
     dataset::BatchLoader<chess::Position> loader {files, batch_size};
     loader.start();
-
-    dataset::BatchLoader<chess::Position> validation_loader {validation_files, batch_size};
-    validation_loader.start();
 
     BerserkModel model {};
     model.set_loss(MPE {2.5, true});
@@ -433,10 +416,9 @@ int main(int argc, char* argv[]) {
         model.load_weights(*previous);
     }
 
-    model.train(loader, validation_loader, 1000);
+    model.train(loader, 1000);
 
     loader.kill();
-    validation_loader.kill();
 
     close();
     return 0;
