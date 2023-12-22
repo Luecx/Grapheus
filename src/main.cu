@@ -370,28 +370,37 @@ int main(int argc, char* argv[]) {
     program.add_argument("--output").required().help("Output directory for network files");
     program.add_argument("--resume").help("Weights file to resume from");
     program.add_argument("--epochs")
-        .default_value<int>(1000)
-        .help("Total number of epochs to train for");
+        .default_value(1000)
+        .help("Total number of epochs to train for")
+        .scan<'i', int>();
     program.add_argument("--save-rate")
-        .default_value<size_t>(50)
-        .help("How frequently to save quantized networks + weights");
+        .default_value(50)
+        .help("How frequently to save quantized networks + weights")
+        .scan<'i', int>();
     program.add_argument("--ft-size")
-        .default_value<size_t>(1024)
-        .help("Number of neurons in the Feature Transformer");
+        .default_value(1024)
+        .help("Number of neurons in the Feature Transformer")
+        .scan<'i', int>();
     program.add_argument("--lambda")
-        .default_value<float>(0.0)
-        .help("Ratio of evaluation score to use while training");
-    program.add_argument("--lr").default_value<float>(1e-3).help(
-        "The starting learning rate for the optimizer");
+        .default_value(0.0f)
+        .help("Ratio of evaluation scored to use while training")
+        .scan<'f', float>();
+    program.add_argument("--lr")
+        .default_value(0.001f)
+        .help("The starting learning rate for the optimizer")
+        .scan<'f', float>();
     program.add_argument("--batch-size")
-        .default_value<int>(16384)
-        .help("Number of positions in a mini-batch during training");
+        .default_value(16384)
+        .help("Number of positions in a mini-batch during training")
+        .scan<'i', int>();
     program.add_argument("--lr-drop-epoch")
-        .default_value<int>(500)
-        .help("Epoch to execute an LR drop at");
+        .default_value(500)
+        .help("Epoch to execute an LR drop at")
+        .scan<'i', int>();
     program.add_argument("--lr-drop-ratio")
-        .default_value<float>(1.0 / 40.0)
-        .help("How much to scale down LR when dropping");
+        .default_value(0.025f)
+        .help("How much to scale down LR when dropping")
+        .scan<'f', float>();
 
     try {
         program.parse_args(argc, argv);
@@ -426,14 +435,14 @@ int main(int argc, char* argv[]) {
     std::cout << "Loading a total of " << files.size() << " files with " << total_positions
               << " total position(s)" << std::endl;
 
-    const int    total_epochs  = program.get<int>("--epochs");
-    const size_t save_rate     = program.get<size_t>("--save-rate");
-    const size_t ft_size       = program.get<size_t>("--ft-size");
-    const float  lambda        = program.get<float>("--lambda");
-    const float  lr            = program.get<float>("--lr");
-    const int    batch_size    = program.get<int>("--batch-size");
-    const int    lr_drop_epoch = program.get<int>("--lr-drop-epoch");
-    const float  lr_drop_ratio = program.get<float>("--lr-drop-ratio");
+    const int   total_epochs  = program.get<int>("--epochs");
+    const int   save_rate     = program.get<int>("--save-rate");
+    const int   ft_size       = program.get<int>("--ft-size");
+    const float lambda        = program.get<float>("--lambda");
+    const float lr            = program.get<float>("--lr");
+    const int   batch_size    = program.get<int>("--batch-size");
+    const int   lr_drop_epoch = program.get<int>("--lr-drop-epoch");
+    const float lr_drop_ratio = program.get<float>("--lr-drop-ratio");
 
     std::cout << "Epochs: " << total_epochs << "\n"
               << "Save Rate: " << save_rate << "\n"
@@ -447,7 +456,7 @@ int main(int argc, char* argv[]) {
     dataset::BatchLoader<chess::Position> loader {files, batch_size};
     loader.start();
 
-    BerserkModel model {ft_size, lambda, save_rate};
+    BerserkModel model {static_cast<size_t>(ft_size), lambda, static_cast<size_t>(save_rate)};
     model.set_loss(MPE {2.5, true});
     model.set_lr_schedule(StepDecayLRSchedule {lr, lr_drop_ratio, lr_drop_epoch});
 
