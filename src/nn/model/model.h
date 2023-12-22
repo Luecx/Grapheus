@@ -203,10 +203,12 @@ struct Model {
     void next_epoch(float epoch_loss, float validation_loss = 0.0) {
         // quantitize weights
         quantize();
+        quantize("latest.net");
         write_epoch_result(epoch_loss, validation_loss);
         // save weights
         if (m_epoch % m_save_frequency == 0)
             save_weights(this->m_path / "weights" / (std::to_string(m_epoch) + ".state"));
+        save_weights(this->m_path / "weights" / "latest.state");
 
         m_epoch++;
     }

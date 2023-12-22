@@ -225,7 +225,7 @@ struct BerserkModel : ChessModel {
     const size_t n_l2          = 32;
     const size_t n_out         = 1;
 
-    BerserkModel(size_t n_ft, float lambda)
+    BerserkModel(size_t n_ft, float lambda, size_t save_rate)
         : ChessModel(lambda) {
 
         in1                    = add<SparseInput>(n_features, 32);
@@ -259,9 +259,10 @@ struct BerserkModel : ChessModel {
                                  1e-8,
                                  5 * 16384));
 
+        set_save_frequency(save_rate);
         add_quantization(Quantizer {
             "quant",
-            50,
+            save_rate,
             QuantizerEntry<int16_t>(&ft->weights.values, quant_one, true),
             QuantizerEntry<int16_t>(&ft->bias.values, quant_one),
             QuantizerEntry<int8_t>(&l1->weights.values, quant_two),
@@ -368,13 +369,20 @@ int main(int argc, char* argv[]) {
     program.add_argument("data").required().help("Directory containing training files");
     program.add_argument("--output").required().help("Output directory for network files");
     program.add_argument("--resume").help("Weights file to resume from");
+    program.add_argument("--epochs")
+        .default_value<int>(1000)
+        .help("Total number of epochs to train for");
+    program.add_argument("--save-rate")
+        .default_value<size_t>(50)
+        .help("How frequently to save quantized networks + weights");
     program.add_argument("--ft-size")
         .default_value<size_t>(1024)
         .help("Number of neurons in the Feature Transformer");
     program.add_argument("--lambda")
         .default_value<float>(0.0)
         .help("Ratio of evaluation score to use while training");
-    program.add_argument("--lr").default_value<float>(1e-3).help("Initial learning rate");
+    program.add_argument("--lr").default_value<float>(1e-3).help(
+        "The starting learning rate for the optimizer");
     program.add_argument("--batch-size")
         .default_value<int>(16384)
         .help("Number of positions in a mini-batch during training");
@@ -418,6 +426,8 @@ int main(int argc, char* argv[]) {
     std::cout << "Loading a total of " << files.size() << " files with " << total_positions
               << " total position(s)" << std::endl;
 
+    const int    total_epochs  = program.get<int>("--epochs");
+    const size_t save_rate     = program.get<size_t>("--save-rate");
     const size_t ft_size       = program.get<size_t>("--ft-size");
     const float  lambda        = program.get<float>("--lambda");
     const float  lr            = program.get<float>("--lr");
@@ -425,7 +435,9 @@ int main(int argc, char* argv[]) {
     const int    lr_drop_epoch = program.get<int>("--lr-drop-epoch");
     const float  lr_drop_ratio = program.get<float>("--lr-drop-ratio");
 
-    std::cout << "FT Size: " << ft_size << "\n"
+    std::cout << "Epochs: " << total_epochs << "\n"
+              << "Save Rate: " << save_rate << "\n"
+              << "FT Size: " << ft_size << "\n"
               << "Lambda: " << lambda << "\n"
               << "LR: " << lr << "\n"
               << "Batch: " << batch_size << "\n"
@@ -435,7 +447,7 @@ int main(int argc, char* argv[]) {
     dataset::BatchLoader<chess::Position> loader {files, batch_size};
     loader.start();
 
-    BerserkModel model {ft_size, lambda};
+    BerserkModel model {ft_size, lambda, save_rate};
     model.set_loss(MPE {2.5, true});
     model.set_lr_schedule(StepDecayLRSchedule {lr, lr_drop_ratio, lr_drop_epoch});
 
@@ -451,7 +463,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Loaded weights from previous " << *previous << std::endl;
     }
 
-    model.train(loader, 1000);
+    model.train(loader, total_epochs);
 
     loader.kill();
 
