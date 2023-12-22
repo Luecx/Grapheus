@@ -18,27 +18,30 @@ using namespace nn;
 using namespace data;
 
 struct ChessModel : nn::Model {
+    float lambda;
+
+    ChessModel(float lambda_)
+        : lambda(lambda_) {}
 
     // seting inputs
-    virtual void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions,
-                                          const float                        lambda = 1.0) = 0;
+    virtual void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions) = 0;
 
     // train function
     void train(dataset::BatchLoader<chess::Position>& loader,
-               int                                    epochs          = 1500,
-               int                                    epoch_size      = 1e8) {
+               int                                    epochs     = 1500,
+               int                                    epoch_size = 1e8) {
         this->compile(loader.batch_size);
 
         Timer t {};
         for (int i = 1; i <= epochs; i++) {
             t.start();
 
-            uint64_t prev_print_tm         = 0;
-            float    total_epoch_loss      = 0;
+            uint64_t prev_print_tm    = 0;
+            float    total_epoch_loss = 0;
 
             for (int b = 1; b <= epoch_size / loader.batch_size; b++) {
                 auto* ds = loader.next();
-                setup_inputs_and_outputs(ds, 0.00);
+                setup_inputs_and_outputs(ds);
 
                 float batch_loss = batch();
                 total_epoch_loss += batch_loss;
@@ -218,13 +221,12 @@ struct BerserkModel : ChessModel {
     const float  quant_two     = 32.0;
 
     const size_t n_features    = 16 * 12 * 64;
-    const size_t n_ft          = 1024;
     const size_t n_l1          = 16;
     const size_t n_l2          = 32;
     const size_t n_out         = 1;
 
-    BerserkModel()
-        : ChessModel() {
+    BerserkModel(size_t n_ft, float lambda)
+        : ChessModel(lambda) {
 
         in1                    = add<SparseInput>(n_features, 32);
         in2                    = add<SparseInput>(n_features, 32);
@@ -304,7 +306,7 @@ struct BerserkModel : ChessModel {
         return king_square_index(oK) * 12 * 64 + oP * 64 + oSq;
     }
 
-    void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions, const float lambda) {
+    void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions) {
         in1->sparse_output.clear();
         in2->sparse_output.clear();
 
@@ -363,9 +365,25 @@ struct BerserkModel : ChessModel {
 int main(int argc, char* argv[]) {
     argparse::ArgumentParser program("Grapheus");
 
-    program.add_argument("data").required().help("Directory containing '.bin' or '.fin' files");
-    program.add_argument("-o", "--output").required().help("Output directory for network files");
-    program.add_argument("-p", "--previous").help("Previous state to load");
+    program.add_argument("data").required().help("Directory containing training files");
+    program.add_argument("--output").required().help("Output directory for network files");
+    program.add_argument("--resume").help("Weights file to resume from");
+    program.add_argument("--ft-size")
+        .default_value<size_t>(1024)
+        .help("Number of neurons in the Feature Transformer");
+    program.add_argument("--lambda")
+        .default_value<float>(0.0)
+        .help("Ratio of evaluation score to use while training");
+    program.add_argument("--lr").default_value<float>(1e-3).help("Initial learning rate");
+    program.add_argument("--batch-size")
+        .default_value<int>(16384)
+        .help("Number of positions in a mini-batch during training");
+    program.add_argument("--lr-drop-epoch")
+        .default_value<int>(500)
+        .help("Epoch to execute an LR drop at");
+    program.add_argument("--lr-drop-ratio")
+        .default_value<float>(1.0 / 40.0)
+        .help("How much to scale down LR when dropping");
 
     try {
         program.parse_args(argc, argv);
@@ -388,7 +406,7 @@ int main(int argc, char* argv[]) {
 
     uint64_t total_positions = 0;
     for (const auto& file_path : files) {
-        FILE* fin = fopen(file_path.c_str(), "rb");
+        FILE*                  fin = fopen(file_path.c_str(), "rb");
 
         dataset::DataSetHeader h {};
         fread(&h, sizeof(dataset::DataSetHeader), 1, fin);
@@ -397,23 +415,40 @@ int main(int argc, char* argv[]) {
         fclose(fin);
     }
 
-    std::cout << "Loading a total of " << files.size() << " files with " << total_positions << " total position(s)" << std::endl;
+    std::cout << "Loading a total of " << files.size() << " files with " << total_positions
+              << " total position(s)" << std::endl;
 
-    const int                             batch_size = 16384;
+    const size_t ft_size       = program.get<size_t>("--ft-size");
+    const float  lambda        = program.get<float>("--lambda");
+    const float  lr            = program.get<float>("--lr");
+    const int    batch_size    = program.get<int>("--batch-size");
+    const int    lr_drop_epoch = program.get<int>("--lr-drop-epoch");
+    const float  lr_drop_ratio = program.get<float>("--lr-drop-ratio");
+
+    std::cout << "FT Size: " << ft_size << "\n"
+              << "Lambda: " << lambda << "\n"
+              << "LR: " << lr << "\n"
+              << "Batch: " << batch_size << "\n"
+              << "LR Drop @ " << lr_drop_epoch << "\n"
+              << "LR Drop R " << lr_drop_ratio << std::endl;
+
     dataset::BatchLoader<chess::Position> loader {files, batch_size};
     loader.start();
 
-    BerserkModel model {};
+    BerserkModel model {ft_size, lambda};
     model.set_loss(MPE {2.5, true});
-    model.set_lr_schedule(StepDecayLRSchedule {1e-3, 1.0 / 40.0, 500});
+    model.set_lr_schedule(StepDecayLRSchedule {lr, lr_drop_ratio, lr_drop_epoch});
 
     auto output_dir = program.get("--output");
     model.set_file_output(output_dir);
     for (auto& quantizer : model.m_quantizers)
         quantizer.set_path(output_dir);
 
-    if (auto previous = program.present("--previous")) {
+    std::cout << "Files will be saved to " << output_dir << std::endl;
+
+    if (auto previous = program.present("--resume")) {
         model.load_weights(*previous);
+        std::cout << "Loaded weights from previous " << *previous << std::endl;
     }
 
     model.train(loader, 1000);
