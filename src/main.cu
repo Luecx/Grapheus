@@ -217,8 +217,7 @@ struct BerserkModel : ChessModel {
     SparseInput* in2;
 
     const float  sigmoid_scale = 1.0 / 160.0;
-    const float  quant_one     = 32.0;
-    const float  quant_two     = 32.0;
+    const float  quant         = 32.0;
 
     const size_t n_features    = 16 * 12 * 64;
     const size_t n_l1          = 16;
@@ -236,24 +235,26 @@ struct BerserkModel : ChessModel {
         ft->ft_regularization  = 1.0 / 16384.0 / 4194304.0;
         fta->max               = 127.0;
 
-        auto        l1         = add<Affine>(fta, n_l1);
-        auto        l1a        = add<ReLU>(l1);
+        auto l1                = add<Affine>(fta, n_l1);
+        auto l1a               = add<ClippedRelu>(l1);
+        l1a->max               = 127.0;
 
-        auto        l2         = add<Affine>(l1a, n_l2);
-        auto        l2a        = add<ReLU>(l2);
+        auto l2                = add<Affine>(l1a, n_l2);
+        auto l2a               = add<ClippedRelu>(l2);
+        l2a->max               = 127.0;
 
-        auto        pos_eval   = add<Affine>(l2a, n_out);
-        auto        sigmoid    = add<Sigmoid>(pos_eval, sigmoid_scale);
+        auto        cp_eval    = add<Affine>(l2a, n_out);
+        auto        sigmoid    = add<Sigmoid>(cp_eval, sigmoid_scale);
 
-        const float hidden_max = 127.0 / quant_two;
+        const float hidden_max = 127.0 / quant;
         add_optimizer(AdamWarmup({{OptimizerEntry {&ft->weights}},
                                   {OptimizerEntry {&ft->bias}},
                                   {OptimizerEntry {&l1->weights}.clamp(-hidden_max, hidden_max)},
                                   {OptimizerEntry {&l1->bias}},
-                                  {OptimizerEntry {&l2->weights}},
+                                  {OptimizerEntry {&l2->weights}.clamp(-hidden_max, hidden_max)},
                                   {OptimizerEntry {&l2->bias}},
-                                  {OptimizerEntry {&pos_eval->weights}},
-                                  {OptimizerEntry {&pos_eval->bias}}},
+                                  {OptimizerEntry {&cp_eval->weights}.clamp(-hidden_max, hidden_max)},
+                                  {OptimizerEntry {&cp_eval->bias}}},
                                  0.95,
                                  0.999,
                                  1e-8,
@@ -263,14 +264,14 @@ struct BerserkModel : ChessModel {
         add_quantization(Quantizer {
             "quant",
             save_rate,
-            QuantizerEntry<int16_t>(&ft->weights.values, quant_one, true),
-            QuantizerEntry<int16_t>(&ft->bias.values, quant_one),
-            QuantizerEntry<int8_t>(&l1->weights.values, quant_two),
-            QuantizerEntry<int32_t>(&l1->bias.values, quant_two),
-            QuantizerEntry<float>(&l2->weights.values, 1.0),
-            QuantizerEntry<float>(&l2->bias.values, quant_two),
-            QuantizerEntry<float>(&pos_eval->weights.values, 1.0),
-            QuantizerEntry<float>(&pos_eval->bias.values, quant_two),
+            QuantizerEntry<int16_t>(&ft->weights.values, quant, true),
+            QuantizerEntry<int16_t>(&ft->bias.values, quant),
+            QuantizerEntry<int8_t>(&l1->weights.values, quant),
+            QuantizerEntry<int32_t>(&l1->bias.values, quant),
+            QuantizerEntry<int8_t>(&l2->weights.values, quant),
+            QuantizerEntry<int32_t>(&l2->bias.values, quant),
+            QuantizerEntry<int8_t>(&cp_eval->weights.values, quant),
+            QuantizerEntry<int32_t>(&cp_eval->bias.values, quant),
         });
     }
 
@@ -313,7 +314,7 @@ struct BerserkModel : ChessModel {
 
         auto& target = m_loss->target;
 
-#pragma omp parallel for schedule(static) num_threads(8)
+#pragma omp parallel for schedule(static) num_threads(16)
         for (int b = 0; b < positions->header.entry_count; b++) {
             chess::Position* pos = &positions->positions[b];
             // fill in the inputs and target values
@@ -356,9 +357,6 @@ struct BerserkModel : ChessModel {
             float w_target = (w_value + 1) / 2.0f;
 
             target(b)      = lambda * p_target + (1.0 - lambda) * w_target;
-
-            // layer_selector->dense_output.values(b, 0) =
-            //     (int) ((chess::popcount(pos->m_occupancy) - 1) / 4);
         }
     }
 };
