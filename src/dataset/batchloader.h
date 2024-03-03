@@ -25,7 +25,7 @@ struct BatchLoader {
     // files to load
     std::vector<std::string> files {};
     std::ifstream            file {};
-    int                      positions_left_in_file = 0;
+    size_t                   positions_left_in_file = 0;
     int                      current_file_index     = 0;
 
     BatchLoader(std::vector<std::string> p_files, int batch_size, int validate_files = true)
@@ -93,15 +93,15 @@ struct BatchLoader {
     }
 
     void fill_buffer() {
-        int fens_to_fill = batch_size;
-        int read_offset  = 0;
+        size_t fens_to_fill = batch_size;
+        size_t read_offset  = 0;
 
         while (fens_to_fill > 0) {
             if (positions_left_in_file == 0)
                 next_file();
 
             // read as many positions as possible from current file
-            int filling = std::min(fens_to_fill, positions_left_in_file);
+            size_t filling = std::min(fens_to_fill, positions_left_in_file);
             positions_left_in_file -= filling;
 
             file.read(reinterpret_cast<char*>(&(load_buffer.positions[read_offset])),
