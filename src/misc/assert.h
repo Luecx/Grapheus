@@ -4,6 +4,7 @@
 
 #pragma once
 #include "start.h"
+
 #include <iostream>
 
 #ifdef NDEBUG
@@ -113,4 +114,3 @@ inline void gpuAssert(cublasStatus_t code, const char* file, int line, bool abor
             exit(code);
     }
 }
-

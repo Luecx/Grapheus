@@ -13,10 +13,10 @@
 namespace data {
 template<typename TYPE = float>
 struct DenseMatrix : public SArray<TYPE>, Matrix {
-    size_t ld;                 // leading dimension
-    size_t offset;             // offset for first entry in case of sub-matrices
-    bool submat;               // flag for detecting if this matrix is a submatrix
-                               // relevant copy construction / move construction / assignment
+    size_t ld;        // leading dimension
+    size_t offset;    // offset for first entry in case of sub-matrices
+    bool   submat;    // flag for detecting if this matrix is a submatrix
+                      // relevant copy construction / move construction / assignment
 
     // construction
     DenseMatrix(const size_t& m, const size_t& n);
@@ -81,7 +81,7 @@ DenseMatrix<TYPE>::DenseMatrix(const size_t& m, const size_t& n)
     , Matrix(m, n)
     , ld {m}
     , offset {0}
-    , submat {false}{}
+    , submat {false} {}
 
 template<typename TYPE>
 DenseMatrix<TYPE>::DenseMatrix(const DenseMatrix& other,
@@ -105,7 +105,7 @@ DenseMatrix<TYPE>::DenseMatrix(const DenseMatrix<TYPE>& other)
     , Matrix(other.m, other.n)
     , ld {other.ld}
     , submat {other.submat}
-    , offset {other.offset}{
+    , offset {other.offset} {
     if (other.submat) {
         this->m_size     = other.m_size;
         this->cpu_values = other.cpu_values;
@@ -121,9 +121,7 @@ DenseMatrix<TYPE>::DenseMatrix(DenseMatrix<TYPE>&& other)
     , Matrix(other.m, other.n)
     , ld {other.ld}
     , submat {other.submat}
-    , offset {other.offset} {
-
-}
+    , offset {other.offset} {}
 
 template<typename TYPE>
 DenseMatrix<TYPE>& DenseMatrix<TYPE>::operator=(const DenseMatrix<TYPE>& other) {
@@ -195,9 +193,9 @@ TYPE& DenseMatrix<TYPE>::operator()(int p_m, int p_n) {
 
 template<typename TYPE_>
 std::ostream& operator<<(std::ostream& os, const DenseMatrix<TYPE_>& data) {
-//    os << "size       : " << data.size() << "\n"
-//       << "CPU address: " << data.template address<CPU>() << " + " << data.offset << "\n"
-//       << "GPU address: " << data.template address<GPU>() << " + " << data.offset << "\n";
+    //    os << "size       : " << data.size() << "\n"
+    //       << "CPU address: " << data.template address<CPU>() << " + " << data.offset << "\n"
+    //       << "GPU address: " << data.template address<GPU>() << " + " << data.offset << "\n";
 
     if (data.n != 1) {
         os << std::fixed << std::setprecision(10);

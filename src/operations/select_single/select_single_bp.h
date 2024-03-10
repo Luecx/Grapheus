@@ -5,6 +5,7 @@
 #pragma once
 #include "../../data/matrix_dense.h"
 #include "../../data/sarray.h"
+#include "../gradient_operation.h"
 
 namespace operations {
 
@@ -17,7 +18,8 @@ __global__ void select_single_bp_kernel(
     size_t n,
     size_t ldi,
     size_t ldo,
-    size_t ldc) {
+    size_t ldc,
+    GradientOperation grad_op) {
     // clang-format on
 
     int thread_n = blockIdx.x * blockDim.x + threadIdx.x;
@@ -28,13 +30,22 @@ __global__ void select_single_bp_kernel(
 
     int idx    = int(indices[MATRIX_INDEX(ldc, 0, thread_n)]);
     int offset = m * thread_z;
-    if (idx == thread_z) {
-        for (int i = 0; i < m; i++) {
-            input[MATRIX_INDEX(ldi, i + offset, thread_n)] = output[MATRIX_INDEX(ldo, i, thread_n)];
+
+    if(grad_op == SET) {
+        if (idx == thread_z) {
+            for (int i = 0; i < m; i++) {
+                input[MATRIX_INDEX(ldi, i + offset, thread_n)] = output[MATRIX_INDEX(ldo, i, thread_n)];
+            }
+        } else {
+            for (int i = 0; i < m; i++) {
+                input[MATRIX_INDEX(ldi, i + offset, thread_n)] = 0;
+            }
         }
     } else {
-        for (int i = 0; i < m; i++) {
-            input[MATRIX_INDEX(ldi, i + offset, thread_n)] = 0;
+        if (idx == thread_z) {
+            for (int i = 0; i < m; i++) {
+                input[MATRIX_INDEX(ldi, i + offset, thread_n)] += output[MATRIX_INDEX(ldo, i, thread_n)];
+            }
         }
     }
 }
@@ -49,7 +60,8 @@ void select_single_bp_host(
     size_t heads,
     size_t ldi,
     size_t ldo,
-    size_t ldc) {
+    size_t ldc,
+    GradientOperation grad_op) {
     // clang-format on
     for (int x = 0; x < n; x++) {
         size_t input_head = int(indices[MATRIX_INDEX(ldc, 0, x)]);
@@ -70,7 +82,8 @@ void select_single_bp_host(
 template<data::Device DEV>
 void select_single_bp(      data::DenseMatrix<float>& input_grd,
                       const data::DenseMatrix<float>& output_grd,
-                      const data::DenseMatrix<float>& indices) {
+                      const data::DenseMatrix<float>& indices,
+                      GradientOperation grad_op = SET) {
     // clang-format on
     const size_t choices = input_grd.m / output_grd.m;
 
@@ -98,7 +111,8 @@ void select_single_bp(      data::DenseMatrix<float>& input_grd,
                                                  output_grd.n,
                                                  input_grd.ld,
                                                  output_grd.ld,
-                                                 indices.ld);
+                                                 indices.ld,
+                                                 grad_op);
     } else {
         select_single_bp_host(input_grd.first<DEV>(),
                               output_grd.first<DEV>(),
@@ -108,7 +122,8 @@ void select_single_bp(      data::DenseMatrix<float>& input_grd,
                               choices,
                               input_grd.ld,
                               output_grd.ld,
-                              indices.ld);
+                              indices.ld,
+                              grad_op);
     }
 }
 

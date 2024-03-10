@@ -1,6 +1,6 @@
 #pragma once
 
-namespace chess{
+namespace chess {
 
 // clang-format off
 enum Squares {
@@ -23,7 +23,9 @@ constexpr char const* square_identifier[] {
 };
 
 // clang-format on
-inline Square square_index(Rank rank, File file) { return 8 * rank + file; }
+inline Square square_index(Rank rank, File file) {
+    return 8 * rank + file;
+}
 
 inline Square square_index(std::string& str) {
 
@@ -33,20 +35,27 @@ inline Square square_index(std::string& str) {
     return square_index(r, f);
 }
 
-inline Rank rank_index(Square square_index) { return square_index >> 3; }
+inline Rank rank_index(Square square_index) {
+    return square_index >> 3;
+}
 
-inline File   file_index(Square square_index) { return square_index & 7; }
+inline File file_index(Square square_index) {
+    return square_index & 7;
+}
 
-inline Square mirror_ver(Square square) { return square ^ 56; }
+inline Square mirror_ver(Square square) {
+    return square ^ 56;
+}
 
-inline Square mirror_hor(Square square) { return square ^ 7; }
+inline Square mirror_hor(Square square) {
+    return square ^ 7;
+}
 
-inline Color  square_color(Square square) {
+inline Color square_color(Square square) {
     constexpr BB white_squares {0x55AA55AA55AA55AAULL};
     if (has(white_squares, square))
         return WHITE;
     return BLACK;
 }
 
-}
-
+}    // namespace chess

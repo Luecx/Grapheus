@@ -2,13 +2,13 @@
 // Created by Luecx on 18.03.2023.
 //
 #include "start.h"
+
 #include <iostream>
 
-cublasHandle_t CUBLAS_HANDLE;
+cublasHandle_t   CUBLAS_HANDLE;
 cusparseHandle_t CUSPARSE_HANDLE;
 
-
-void display_header() {
+void             display_header() {
     const int kb = 1024;
     const int mb = kb * kb;
     std::cout << "C++ version:    v" << __cplusplus << std::endl;

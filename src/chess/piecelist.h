@@ -79,4 +79,4 @@ struct PieceList {
         return (lsb(mask_upper) >> 2) + PIECES_PER_BUCKET;
     }
 };
-}
+}    // namespace chess

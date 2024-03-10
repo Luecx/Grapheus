@@ -27,7 +27,7 @@ struct Model {
     CSVWriter              m_csv {};
 
     size_t                 m_epoch          = 1;
-    size_t                 m_save_frequency = 1;
+    size_t                 m_save_frequency = 50;
     std::filesystem::path  m_path;
 
     Model() {
@@ -87,9 +87,8 @@ struct Model {
 
     // adds a quantization
     void add_quantization(const Quantizer& quantizer) {
-        ERROR(std::filesystem::exists(m_path));
         m_quantizers.push_back(quantizer);
-        m_quantizers.back().set_path((m_path / std::filesystem::path("quant")).string());
+        m_quantizers.back().set_path(m_path.string());
     }
 
     // sets the frequency at which states will be saved
@@ -204,10 +203,12 @@ struct Model {
     void next_epoch(float epoch_loss, float validation_loss = 0.0) {
         // quantitize weights
         quantize();
+        quantize("latest.net");
         write_epoch_result(epoch_loss, validation_loss);
         // save weights
         if (m_epoch % m_save_frequency == 0)
             save_weights(this->m_path / "weights" / (std::to_string(m_epoch) + ".state"));
+        save_weights(this->m_path / "weights" / "latest.state");
 
         m_epoch++;
     }

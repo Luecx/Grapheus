@@ -7,19 +7,23 @@ namespace nn {
 #include "../../operations/operations.h"
 
 struct ChunkwiseMul : public Layer {
-    Layer* prev;
-    int chunks;
+    Layer*            prev;
+    int               use_id;
+    GradientOperation grad_op;
+    int               chunks;
 
     ChunkwiseMul(Layer* prev, int chunks)
         : Layer(prev->size / 2)
         , prev(prev)
         , chunks(chunks) {
+        use_id = prev->use();
         ERROR(prev->size % 2 == 0);
         ERROR(prev->size % chunks == 0);
     }
 
     void compile(size_t batch_size) override {
         this->compile_suboutput(batch_size, Tape(size, batch_size));
+        this->grad_op = this->use_id == prev->used() ? SET : INCREMENT;
     }
 
     void forward() override {
@@ -58,7 +62,7 @@ struct ChunkwiseMul : public Layer {
             data::DenseMatrix m2_grd{prev->dense_output.gradients,
                                   m            , n,
                                   m * 2 * i + m, 0};
-            operations::elemwise_mul_bp<data::GPU>(m1, m1_grd, m2, m2_grd, o_grd);
+            operations::elemwise_mul_bp<data::GPU>(m1, m1_grd, m2, m2_grd, o_grd, grad_op);
         }
     }
 };

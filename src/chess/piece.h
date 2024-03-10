@@ -1,7 +1,7 @@
 #pragma once
 #include "defs.h"
 
-namespace chess{
+namespace chess {
 
 enum Colors { WHITE = false, BLACK = true, N_COLORS = 2 };
 
@@ -37,11 +37,16 @@ enum Pieces {
 constexpr char
     piece_identifier[] {'P', 'N', 'B', 'R', 'Q', 'K', ' ', ' ', 'p', 'n', 'b', 'r', 'q', 'k'};
 
-inline Color color_of(Piece p) { return p & 0x8; }
-
-inline PieceType type_of(Piece p) { return p & 0x7; }
-
-inline Piece     piece(Color c, PieceType pt) { return c * 8 + pt; }
-
+inline Color color_of(Piece p) {
+    return p & 0x8;
 }
 
+inline PieceType type_of(Piece p) {
+    return p & 0x7;
+}
+
+inline Piece piece(Color c, PieceType pt) {
+    return c * 8 + pt;
+}
+
+}    // namespace chess

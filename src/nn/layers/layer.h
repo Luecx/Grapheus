@@ -1,6 +1,8 @@
 #pragma once
+
 #include "../../data/matrix_sparse.h"
 #include "tape.h"
+
 namespace nn {
 
 enum LayerOutputType : int { DENSE = 1, SPARSE = 2, DENSE_AND_SPARSE };
@@ -44,12 +46,12 @@ struct Layer {
     virtual void backward() {};
 
     // use and unuse functions for the layers
-    void use() {
+    int use() {
         output_used_counter++;
-        ERROR(output_used_counter <= 1);
+        return used();
     }
-    void unuse() {
-        output_used_counter--;
+    int used() {
+        return output_used_counter;
     }
 
     // get all the parameters related to this layer

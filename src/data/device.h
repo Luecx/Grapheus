@@ -22,4 +22,3 @@ constexpr inline bool is_gpu(Device dev) {
     return dev & GPU;
 }
 }    // namespace data
-

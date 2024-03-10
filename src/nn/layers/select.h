@@ -9,20 +9,23 @@ struct Select : Layer {
 
     Layer*              indices;
     std::vector<Layer*> heads {};
+    std::vector<int   > use_ids {};
 
     // pointer to the heads
     data::SArray<float*> input_pointers {0};
     data::SArray<float*> gradient_pointers {0};
+    data::SArray<GradientOperation> grad_ops {0};
 
     Select(std::vector<Layer*> prev, Layer* indices)
         : Layer(prev[0]->size)
         , heads(prev)
         , indices(indices)
         , input_pointers(prev.size())
-        , gradient_pointers(prev.size()) {
+        , gradient_pointers(prev.size())
+        , grad_ops(prev.size()){
 
-        for(Layer* l:prev){
-            l->use();
+        for(int i = 0; i< prev.size(); i++){
+            use_ids[i] = prev[i]->use();
         }
 
         this->input_pointers.malloc<data::BOTH>();
@@ -36,6 +39,10 @@ struct Select : Layer {
         }
         input_pointers    >> data::GPU;
         gradient_pointers >> data::GPU;
+
+        for(int i = 0; i < heads.size(); i++){
+            grad_ops[i] = this->use_ids[i] == heads[i]->used() ? SET : INCREMENT;
+        }
 
         this->dense_output = Tape(size, batch_size);
         this->dense_output.malloc();
@@ -51,7 +58,8 @@ struct Select : Layer {
         // CANNOT SWITCH TO CPU HERE BECAUSE OUTPUT_POINTERS ONLY HAS GPU VALUES!
         operations::select_bp<data::GPU>(gradient_pointers,
                                          dense_output.gradients,
-                                         indices->dense_output.gradients);
+                                         indices->dense_output.gradients,
+                                         grad_ops);
     }
 };
 

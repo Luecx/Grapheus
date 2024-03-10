@@ -6,6 +6,7 @@
 #include "../../data/device.h"
 #include "../../data/matrix_dense.h"
 #include "../../misc/start.h"
+#include "../gradient_operation.h"
 
 #include <cmath>
 

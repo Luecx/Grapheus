@@ -356,4 +356,3 @@ SArray<TYPE>& SArray<TYPE>::operator/=(const SArray<TYPE>& other) {
 }
 
 }    // namespace data
-

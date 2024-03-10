@@ -5,6 +5,12 @@ struct WeightedSum : public Layer {
     Layer* prev_1;
     Layer* prev_2;
 
+    int use_id_1;
+    int use_id_2;
+
+    GradientOperation grad_op_1;
+    GradientOperation grad_op_2;
+
     float  alpha;
     float  beta;
 
@@ -14,13 +20,15 @@ struct WeightedSum : public Layer {
         , prev_2(prev2)
         , alpha(alpha)
         , beta(beta) {
-        prev1->use();
-        prev2->use();
+        use_id_1 = prev1->use();
+        use_id_2 = prev2->use();
         ERROR(prev1->size == prev2->size);
     }
 
     void compile(size_t batch_size) override {
         this->compile_suboutput(batch_size, Tape(size, batch_size));
+        grad_op_1 = use_id_1 == prev_1->used() ? SET : INCREMENT;
+        grad_op_2 = use_id_2 == prev_2->used() ? SET : INCREMENT;
     }
 
     void forward() override {
@@ -35,7 +43,9 @@ struct WeightedSum : public Layer {
                                           prev_2->dense_output.gradients,
                                           dense_output.gradients,
                                           alpha,
-                                          beta);
+                                          beta,
+                                          grad_op_1,
+                                          grad_op_2);
     }
 };
 

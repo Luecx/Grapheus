@@ -8,7 +8,10 @@ namespace nn {
 struct SelectSingle : Layer {
 
     Layer* indices;
-    Layer* prev {};
+
+    Layer*            prev;
+    int               use_id;
+    GradientOperation grad_op;
     size_t choices;
 
     SelectSingle(Layer* prev, Layer* indices, size_t choices)
@@ -16,13 +19,13 @@ struct SelectSingle : Layer {
         , prev(prev)
         , indices(indices)
         , choices(choices) {
-
-        prev->use();
+        use_id = prev->use();
         ERROR(prev->size % choices == 0);
     }
 
     void compile(size_t batch_size) override {
         this->compile_suboutput(batch_size, Tape {size, batch_size});
+        this->grad_op = this->use_id == prev->used() ? SET : INCREMENT;
     }
 
     void forward() override {
@@ -33,7 +36,8 @@ struct SelectSingle : Layer {
     void backward() override {
         operations::select_single_bp<data::GPU>(prev->dense_output.gradients,
                                                 dense_output.gradients,
-                                                indices->dense_output.values);
+                                                indices->dense_output.values,
+                                                grad_op);
     }
 };
 

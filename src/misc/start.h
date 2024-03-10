@@ -6,9 +6,8 @@
 #include <cublas_v2.h>
 #include <cusparse_v2.h>
 
-extern cublasHandle_t CUBLAS_HANDLE;
+extern cublasHandle_t   CUBLAS_HANDLE;
 extern cusparseHandle_t CUSPARSE_HANDLE;
 
-void init();
-void close();
-
+void                    init();
+void                    close();

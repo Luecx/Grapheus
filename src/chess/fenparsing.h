@@ -10,7 +10,7 @@
 #include <sstream>
 #include <string>
 
-namespace chess{
+namespace chess {
 
 struct FenCharacter {
     char   character {0};
@@ -250,4 +250,4 @@ inline std::string write_fen(const Position& position, bool write_score = false)
 
     return ss.str();
 }
-}
+}    // namespace chess

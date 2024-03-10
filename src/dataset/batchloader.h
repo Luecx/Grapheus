@@ -13,31 +13,31 @@ namespace dataset {
 
 template<typename TYPE>
 struct BatchLoader {
-    int            batch_size;
-    DataSet<TYPE>  active_batch;
+    int           batch_size;
+    DataSet<TYPE> active_batch;
 
-    volatile bool  keep_loading      = true;
-    volatile bool  next_batch_loaded = false;
-    DataSet<TYPE> load_buffer{};
+    volatile bool keep_loading      = true;
+    volatile bool next_batch_loaded = false;
+    DataSet<TYPE> load_buffer {};
 
-    std::thread*   loading_thread;
+    std::thread*  loading_thread;
 
     // files to load
     std::vector<std::string> files {};
     std::ifstream            file {};
-    int                      positions_left_in_file = 0;
+    size_t                   positions_left_in_file = 0;
     int                      current_file_index     = 0;
 
     BatchLoader(std::vector<std::string> p_files, int batch_size, int validate_files = true)
         : batch_size(batch_size) {
 
-        load_buffer .resize(batch_size);
+        load_buffer.resize(batch_size);
         active_batch.resize(batch_size);
 
-        files                              = std::move(p_files);
-        current_file_index                 = -1;
-        positions_left_in_file             = 0;
-        next_batch_loaded                  = false;
+        files                  = std::move(p_files);
+        current_file_index     = -1;
+        positions_left_in_file = 0;
+        next_batch_loaded      = false;
 
         if (validate_files) {
             files.erase(std::remove_if(files.begin(),
@@ -81,7 +81,7 @@ struct BatchLoader {
             file               = std::ifstream {files[current_file_index], std::ios::binary};
 
             if (!file.is_open()) {
-//                logging::write("Could not open file: " + files[current_file_index]);
+                //                logging::write("Could not open file: " + files[current_file_index]);
                 file.close();
             }
         }
@@ -93,15 +93,15 @@ struct BatchLoader {
     }
 
     void fill_buffer() {
-        int fens_to_fill = batch_size;
-        int read_offset  = 0;
+        size_t fens_to_fill = batch_size;
+        size_t read_offset  = 0;
 
         while (fens_to_fill > 0) {
             if (positions_left_in_file == 0)
                 next_file();
 
             // read as many positions as possible from current file
-            int filling = std::min(fens_to_fill, positions_left_in_file);
+            size_t filling = std::min(fens_to_fill, positions_left_in_file);
             positions_left_in_file -= filling;
 
             file.read(reinterpret_cast<char*>(&(load_buffer.positions[read_offset])),

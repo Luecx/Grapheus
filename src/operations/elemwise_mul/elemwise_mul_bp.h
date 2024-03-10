@@ -1,5 +1,6 @@
 #include "../../data/matrix_dense.h"
 #include "../../data/matrix_sparse.h"
+#include "../gradient_operation.h"
 
 namespace operations {
 
@@ -13,7 +14,8 @@ __global__ void elemwise_mul_bp_kernel(const float* __restrict__ inp1,
                                        int cols,
                                        int ld_inp1,
                                        int ld_inp2,
-                                       int ld_out) {
+                                       int ld_out,
+                                       GradientOperation grad_operation) {
 
     // Calculate the row and column indices of the element
     int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -27,10 +29,10 @@ __global__ void elemwise_mul_bp_kernel(const float* __restrict__ inp1,
 
         // Compute the gradients
         if (inp1_grad != nullptr) {
-            inp1_grad[idx_inp1] = inp2[idx_inp2] * out_grad[idx_out];
+            inp1_grad[idx_inp1] = inp2[idx_inp2] * out_grad[idx_out] + grad_operation * inp1_grad[idx_inp1];
         }
         if (inp2_grad != nullptr) {
-            inp2_grad[idx_inp2] = inp1[idx_inp1] * out_grad[idx_out];
+            inp2_grad[idx_inp2] = inp1[idx_inp1] * out_grad[idx_out] + grad_operation * inp2_grad[idx_inp2];
         }
     }
 }
@@ -41,7 +43,8 @@ inline void elemwise_mul_bp(const data::DenseMatrix<float>& inp1,
                                   data::DenseMatrix<float>& inp1_grad,
                             const data::DenseMatrix<float>& inp2,
                                   data::DenseMatrix<float>& inp2_grad,
-                            const data::DenseMatrix<float>& out_grad) {
+                            const data::DenseMatrix<float>& out_grad,
+                            GradientOperation grad_operation = SET) {
     // clang-format on
 
     ASSERT(inp1.m == inp2.m && inp1.m == out_grad.m);
@@ -62,7 +65,7 @@ inline void elemwise_mul_bp(const data::DenseMatrix<float>& inp1,
             inp2     .first<data::GPU>(),
             inp2_grad.first<data::GPU>(),
             out_grad .first<data::GPU>(),
-            inp1.m, inp1.n, inp1.ld, inp2.ld, out_grad.ld);
+            inp1.m, inp1.n, inp1.ld, inp2.ld, out_grad.ld, grad_operation);
         // Remember to check for kernel errors here as usual
     } else {
         // Use CPU implementation
