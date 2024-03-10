@@ -8,6 +8,7 @@
 #include "sarray.h"
 
 #include <iostream>
+#include <functional>
 
 namespace data {
 template<typename TYPE = float>
@@ -67,7 +68,12 @@ struct DenseMatrix : public SArray<TYPE>, Matrix {
     inline DenseMatrix<TYPE>  operator-(TYPE val);
     inline DenseMatrix<TYPE>& operator/=(TYPE val);
     inline DenseMatrix<TYPE>  operator/(TYPE val);
+    inline DenseMatrix<TYPE>& operator=(TYPE value);
+
+    // for each function which allows easy iteration over the content
+    inline void for_each(std::function<void(size_t, size_t, TYPE&)> func);
 };
+
 
 template<typename TYPE>
 DenseMatrix<TYPE>::DenseMatrix(const size_t& m, const size_t& n)
@@ -151,6 +157,7 @@ DenseMatrix<TYPE>& DenseMatrix<TYPE>::operator=(DenseMatrix<TYPE>&& other) {
     }
     return *this;
 }
+
 
 template<typename TYPE>
 template<Device DEV>
@@ -314,11 +321,7 @@ DenseMatrix<TYPE> DenseMatrix<TYPE>::operator-() const {
 template<typename TYPE>
 DenseMatrix<TYPE>& DenseMatrix<TYPE>::operator*=(TYPE val) {
     ASSERT(this->template is_allocated<CPU>());
-    for (size_t m = 0; m < this->m; m++) {
-        for (size_t n = 0; n < this->n; n++) {
-            this->get(m, n) *= val;
-        }
-    }
+    for_each([&val](size_t m, size_t n, float& v) {v *= val;});
     return *this;
 }
 template<typename TYPE>
@@ -329,11 +332,7 @@ DenseMatrix<TYPE> DenseMatrix<TYPE>::operator*(TYPE val) {
 template<typename TYPE>
 DenseMatrix<TYPE>& DenseMatrix<TYPE>::operator+=(TYPE val) {
     ASSERT(this->template is_allocated<CPU>());
-    for (size_t m = 0; m < this->m; m++) {
-        for (size_t n = 0; n < this->n; n++) {
-            this->get(m, n) += val;
-        }
-    }
+    for_each([&val](size_t m, size_t n, float& v) {v += val;});
     return *this;
 }
 template<typename TYPE>
@@ -343,12 +342,7 @@ DenseMatrix<TYPE> DenseMatrix<TYPE>::operator+(TYPE val) {
 }
 template<typename TYPE>
 DenseMatrix<TYPE>& DenseMatrix<TYPE>::operator-=(TYPE val) {
-    ASSERT(this->template is_allocated<CPU>());
-    for (size_t m = 0; m < this->m; m++) {
-        for (size_t n = 0; n < this->n; n++) {
-            this->get(m, n) -= val;
-        }
-    }
+    for_each([&val](size_t m, size_t n, float& v) {v -= val;});
     return *this;
 }
 template<typename TYPE>
@@ -358,18 +352,29 @@ DenseMatrix<TYPE> DenseMatrix<TYPE>::operator-(TYPE val) {
 }
 template<typename TYPE>
 DenseMatrix<TYPE>& DenseMatrix<TYPE>::operator/=(TYPE val) {
-    ASSERT(this->template is_allocated<CPU>());
-    for (size_t m = 0; m < this->m; m++) {
-        for (size_t n = 0; n < this->n; n++) {
-            this->get(m, n) /= val;
-        }
-    }
+    for_each([&val](size_t m, size_t n, float& v) {v /= val;});
     return *this;
 }
 template<typename TYPE>
 DenseMatrix<TYPE> DenseMatrix<TYPE>::operator/(TYPE val) {
     ASSERT(this->template is_allocated<CPU>());
     return DenseMatrix<TYPE>(*this) /= val;
+}
+
+template<typename TYPE>
+DenseMatrix<TYPE>& DenseMatrix<TYPE>::operator=(TYPE value){
+    for_each([&value](size_t m, size_t n, float& v) {v = value;});
+    return *this;
+}
+
+template<typename TYPE>
+void DenseMatrix<TYPE>::for_each(std::function<void(size_t, size_t, TYPE&)> func) {
+    ASSERT(this->template is_allocated<CPU>());
+    for (size_t i = 0; i < this->m; ++i) {
+        for (size_t j = 0; j < this->n; ++j) {
+            func(i, j, this->get(i, j));
+        }
+    }
 }
 
 }    // namespace data

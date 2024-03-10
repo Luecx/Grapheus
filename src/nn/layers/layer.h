@@ -1,6 +1,8 @@
 #pragma once
+
 #include "../../data/matrix_sparse.h"
 #include "tape.h"
+
 namespace nn {
 
 enum LayerOutputType : int { DENSE = 1, SPARSE = 2, DENSE_AND_SPARSE };
@@ -25,9 +27,9 @@ struct Layer {
     virtual LayerOutputType output_type() {
         return DENSE;
     }
+
     // main call to configure the layer and initialise all matrices
     // should also call compile_output which sets the output matrix
-    // it is seperated
     virtual void compile(size_t batch_size) = 0;
     virtual void compile_suboutput(size_t batch_size, const Tape& output) {
         dense_output = output;
@@ -44,12 +46,12 @@ struct Layer {
     virtual void backward() {};
 
     // use and unuse functions for the layers
-    void use() {
+    int use() {
         output_used_counter++;
-        ERROR(output_used_counter <= 1);
+        return used();
     }
-    void unused() {
-        output_used_counter--;
+    int used() {
+        return output_used_counter;
     }
 
     // get all the parameters related to this layer

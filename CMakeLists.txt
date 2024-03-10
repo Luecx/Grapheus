@@ -17,7 +17,7 @@ set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CMAKE_COMMAND} -E time")
 
 set_target_properties(Grapheus PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler -march=native -fopenmp")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler -march=native -fopenmp -Xcudafe --diag_suppress=68 -Xcudafe --diag_suppress=20050")
 
 target_link_libraries(Grapheus ${CUDA_LIBRARIES})
 target_link_libraries(Grapheus ${CUDA_CUBLAS_LIBRARIES})

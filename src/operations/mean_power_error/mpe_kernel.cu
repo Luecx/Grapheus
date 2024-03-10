@@ -14,10 +14,8 @@ __global__ void operations::mpe_kernel(
     size_t ldt){
     // clang-format on
 
-
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int idy = blockIdx.y * blockDim.y + threadIdx.y;
-
 
     if (idx >= n || idy >= m)
         return;

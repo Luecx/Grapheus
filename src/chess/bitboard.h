@@ -6,7 +6,12 @@
 #include <immintrin.h>
 #endif
 
-namespace chess {
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+#include <intrin.h>
+#pragma intrinsic(__popcnt64) // For MSVC, this ensures the intrinsic is available.
+#endif
+
+namespace chess{
 
 /**
  * toggles the bit
@@ -54,8 +59,12 @@ inline bool has(BB number, Square index) {
  * @return
  */
 inline Square lsb(BB bb) {
-    //    UCI_ASSERT(bb != 0);
+//    UCI_ASSERT(bb != 0);
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+    return _tzcnt_u64(bb);
+#else
     return __builtin_ctzll(bb);
+#endif
 }
 
 /**
@@ -101,7 +110,11 @@ https:    // stackoverflow.com/questions/7669057/find-nth-set-bit-in-an-int
  * @return
  */
 inline int popcount(BB bb) {
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+    return __popcnt64(bb);
+#else
     return __builtin_popcountll(bb);
+#endif
 }
 
 /**

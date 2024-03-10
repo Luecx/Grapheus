@@ -1,5 +1,8 @@
 #pragma once
 
+#include "../../operations/operations.h"
+#include "input.h"
+
 namespace nn {
 
 struct FeatureTransformer : public Layer {
