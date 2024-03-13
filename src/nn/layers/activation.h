@@ -139,6 +139,34 @@ struct ClippedRelu : public Layer {
     }
 };
 
+struct SqrClippedRelu : public Layer {
+    Layer* prev;
+    float  max;
+    explicit SqrClippedRelu(Layer* prev, float max = 1)
+        : Layer(prev->size)
+        , prev(prev)
+        , max(max) {
+        prev->use();
+    }
+
+    void compile(size_t batch_size) override {
+        this->compile_suboutput(batch_size, Tape {size, batch_size});
+    }
+
+    void forward() override {
+        Layer::forward();
+        operations::sqrcrelu<data::GPU>(prev->dense_output.values, dense_output.values, max);
+    }
+    void backward() override {
+        Layer::backward();
+        operations::sqrcrelu_bp<data::GPU>(prev->dense_output.values,
+                                        prev->dense_output.gradients,
+                                        dense_output.values,
+                                        dense_output.gradients,
+                                        max);
+    }
+};
+
 struct LeakyReLU : public Layer {
     Layer*            prev;
     GradientOperation grad_op;

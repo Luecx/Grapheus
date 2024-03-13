@@ -21,6 +21,15 @@ DEFINE_ACTIVATION(crelu
                   , A[ida] > 0 ? (A[ida] < scalar ? A[ida] : scalar) : 0
                   , A[ida] > 0 && A[ida] < scalar ? B_grd[idb] : 0);
 
+DEFINE_ACTIVATION(sqrcrelu,
+                  A[ida] * A[ida] * (127 / 128) > 0
+                      ? (A[ida] * A[ida] * (127 / 128) < scalar ? A[ida] * A[ida] * (127 / 128)
+                                                                : scalar)
+                      : 0,
+                  A[ida] * A[ida] * (127 / 128) > 0 && A[ida] * A[ida] * (127 / 128) < scalar
+                      ? B_grd[idb] * B_grd[idb] * (127 / 128)
+                      : 0);
+
 DEFINE_ACTIVATION(lrelu
                   , A[ida] > 0 ? A[ida] : A[ida] * scalar
                   , A[ida] > 0 ? B_grd[idb] : B_grd[idb] * scalar);
