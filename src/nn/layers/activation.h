@@ -140,17 +140,20 @@ struct ClippedRelu : public Layer {
 };
 
 struct SqrClippedRelu : public Layer {
-    Layer* prev;
-    float  max;
+    Layer*            prev;
+    GradientOperation grad_op;
+    int               use_id;
+    float             max;
     explicit SqrClippedRelu(Layer* prev, float max = 1)
         : Layer(prev->size)
         , prev(prev)
         , max(max) {
-        prev->use();
+        use_id = prev->use();
     }
 
     void compile(size_t batch_size) override {
         this->compile_suboutput(batch_size, Tape {size, batch_size});
+        this->grad_op = use_id == prev->used() ? SET : INCREMENT;
     }
 
     void forward() override {
@@ -163,7 +166,8 @@ struct SqrClippedRelu : public Layer {
                                         prev->dense_output.gradients,
                                         dense_output.values,
                                         dense_output.gradients,
-                                        max);
+                                        max,
+                                        grad_op);
     }
 };
 
