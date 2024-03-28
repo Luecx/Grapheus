@@ -3,9 +3,11 @@
 
 # Compiler options
 NVCC = nvcc
-CXX = g++
-CXXFLAGS = -std=c++17 -fopenmp -stdlib=libc++
-NVCCFLAGS = -use_fast_math -O3 -DNDEBUG --compiler-options -std=c++17
+CXXFLAGS = -std=c++17 -fopenmp -march=native
+NVCCFLAGS = -use_fast_math -O3 -DNDEBUG
+
+# Combine CXXFLAGS into NVCCFLAGS
+NVCCFLAGS += $(addprefix --compiler-options ,$(CXXFLAGS))
 
 # Libraries
 LIBS = -lcublas

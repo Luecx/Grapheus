@@ -5,10 +5,9 @@
 
 #include <iostream>
 
-cublasHandle_t   CUBLAS_HANDLE;
-cusparseHandle_t CUSPARSE_HANDLE;
+cublasHandle_t CUBLAS_HANDLE;
 
-void             display_header() {
+void           display_header() {
     const int kb = 1024;
     const int mb = kb * kb;
     std::cout << "C++ version:    v" << __cplusplus << std::endl;
@@ -49,11 +48,9 @@ void             display_header() {
 
 void init() {
     cublasCreate(&CUBLAS_HANDLE);
-    cusparseCreate(&CUSPARSE_HANDLE);
     display_header();
 }
 
 void close() {
     cublasDestroy(CUBLAS_HANDLE);
-    cusparseDestroy(CUSPARSE_HANDLE);
 }
