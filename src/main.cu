@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
         .help("Total positions in each epoch")
         .scan<'i', int>();
 
-    program.add_argument("--val--size")
+    program.add_argument("--val-size")
         .default_value(10000000)
         .help("Total positions for each validation epoch")
         .scan<'i', int>();
@@ -117,6 +117,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Epochs: " << total_epochs << "\n"
               << "Epochs Size: " << epoch_size << "\n"
+              << "Validation Size: " << val_epoch_size << "\n"
               << "Save Rate: " << save_rate << "\n"
               << "FT Size: " << ft_size << "\n"
               << "Lambda: " << lambda << "\n"
