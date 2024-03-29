@@ -56,12 +56,9 @@ struct ChessModel : Model {
 
         this->compile(train_loader.batch_size);
 
-        int val_epoch_size = epoch_size / 10;
+        const int val_epoch_size = epoch_size / 10;
 
-        std::cout << "Starting training: " << std::endl;
-        std::cout << epoch_size << std::endl;
-
-        Timer t {};
+        Timer     t {};
         for (int i = 1; i <= epochs; i++) {
             t.start();
 
@@ -96,24 +93,20 @@ struct ChessModel : Model {
             }
 
             // Validation phase
-            // for (int b = 1; b <= val_epoch_size / val_loader.batch_size; b++) {
-            //     auto* ds = val_loader.next();
-            //     setup_inputs_and_outputs(ds);
+            for (int b = 1; b <= val_epoch_size / val_loader.batch_size; b++) {
+                auto* ds = val_loader.next();
+                setup_inputs_and_outputs(ds);
 
-            //     float val_batch_loss = loss();
-            //     total_val_loss += val_batch_loss;
-
-            //     float val_loss = total_val_loss / b;
-
-            //     printf(", val_loss = [%1.8]", val_loss);
-            // }
-
-            std::cout << std::endl;
+                float val_batch_loss = loss();
+                total_val_loss += val_batch_loss;
+            }
 
             float epoch_loss = total_epoch_loss / (epoch_size / train_loader.batch_size);
             float val_loss   = total_val_loss / (epoch_size / val_loader.batch_size);
 
+            printf(", val_loss = [%1.8f]", val_loss);
             next_epoch(epoch_loss, val_loss);
+            std::cout << std::endl;
         }
     }
 

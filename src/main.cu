@@ -126,10 +126,6 @@ int main(int argc, char* argv[]) {
     train_loader.start();
     val_loader.start();
 
-    auto* ds = train_loader.next();
-
-    std::cout << ds->positions.size() << std::endl;
-
     model::BerserkModel model {static_cast<size_t>(ft_size), lambda, static_cast<size_t>(save_rate)};
     model.set_loss(MPE {2.5, true});
     model.set_lr_schedule(StepDecayLRSchedule {lr, lr_drop_ratio, lr_drop_epoch});

@@ -106,7 +106,7 @@ struct BerserkModel : ChessModel {
 
         auto& target = m_loss->target;
 
-#pragma omp parallel for schedule(static) num_threads(16)
+#pragma omp parallel for schedule(static) num_threads(6)
         for (int b = 0; b < positions->header.entry_count; b++) {
             chess::Position* pos = &positions->positions[b];
             // fill in the inputs and target values
