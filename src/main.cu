@@ -22,6 +22,11 @@ int main(int argc, char* argv[]) {
         .default_value(100000000)
         .help("Total positions in each epoch")
         .scan<'i', int>();
+
+    program.add_argument("--val--size")
+        .default_value(10000000)
+        .help("Total positions for each validation epoch")
+        .scan<'i', int>();
     program.add_argument("--save-rate")
         .default_value(50)
         .help("How frequently to save quantized networks + weights")
@@ -99,15 +104,16 @@ int main(int argc, char* argv[]) {
                   << std::endl;
     }
 
-    const int   total_epochs  = program.get<int>("--epochs");
-    const int   epoch_size    = program.get<int>("--epoch-size");
-    const int   save_rate     = program.get<int>("--save-rate");
-    const int   ft_size       = program.get<int>("--ft-size");
-    const float lambda        = program.get<float>("--lambda");
-    const float lr            = program.get<float>("--lr");
-    const int   batch_size    = program.get<int>("--batch-size");
-    const int   lr_drop_epoch = program.get<int>("--lr-drop-epoch");
-    const float lr_drop_ratio = program.get<float>("--lr-drop-ratio");
+    const int   total_epochs   = program.get<int>("--epochs");
+    const int   epoch_size     = program.get<int>("--epoch-size");
+    const int   val_epoch_size = program.get<int>("--val-size");
+    const int   save_rate      = program.get<int>("--save-rate");
+    const int   ft_size        = program.get<int>("--ft-size");
+    const float lambda         = program.get<float>("--lambda");
+    const float lr             = program.get<float>("--lr");
+    const int   batch_size     = program.get<int>("--batch-size");
+    const int   lr_drop_epoch  = program.get<int>("--lr-drop-epoch");
+    const float lr_drop_ratio  = program.get<float>("--lr-drop-ratio");
 
     std::cout << "Epochs: " << total_epochs << "\n"
               << "Epochs Size: " << epoch_size << "\n"
@@ -146,7 +152,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Loaded weights from previous " << *previous << std::endl;
     }
 
-    model.train(train_loader, val_loader, total_epochs, epoch_size);
+    model.train(train_loader, val_loader, total_epochs, epoch_size, val_epoch_size);
 
     train_loader.kill();
     val_loader->kill();

@@ -53,8 +53,9 @@ struct ChessModel : Model {
      */
     void train(BatchLoader&                train_loader,
                std::optional<BatchLoader>& val_loader,
-               int                         epochs     = 1500,
-               int                         epoch_size = 1e8) {
+               int                         epochs         = 1500,
+               int                         epoch_size     = 1e8,
+               int                         val_epoch_size = 1e7) {
 
         this->compile(train_loader.batch_size);
 
@@ -91,8 +92,6 @@ struct ChessModel : Model {
                     std::cout << std::flush;
                 }
             }
-
-            int val_epoch_size = epoch_size / 10;
 
             // Validation phase (if validation loader is provided)
             if (val_loader.has_value()) {
