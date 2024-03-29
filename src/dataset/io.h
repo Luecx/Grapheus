@@ -3,6 +3,7 @@
 #include "dataset.h"
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 
 namespace dataset {
@@ -118,6 +119,45 @@ bool is_readable(const std::string& file) {
     fclose(f);
 
     return expected_size == size;
+}
+
+/**
+ * @brief Counts total positions across all datasets from provided file paths.
+ *
+ * Iterates through file paths, reads headers, and sums positions for total count.
+ *
+ * @param files Vector of dataset file paths.
+ * @return Total positions across all datasets.
+ */
+uint64_t count_total_positions(const std::vector<std::string>& files) {
+    uint64_t total_positions = 0;
+
+    // Iterate through each file path and read dataset headers to count positions
+    for (const auto& path : files) {
+        std::ifstream fin(path, std::ios::binary);
+        DataSetHeader h {};
+        fin.read(reinterpret_cast<char*>(&h), sizeof(DataSetHeader));
+        total_positions += h.entry_count;
+    }
+
+    return total_positions;
+}
+
+/**
+ * @brief Retrieves dataset file paths from the specified directory.
+ *
+ * Iterates through the directory and collects paths of dataset files.
+ *
+ * @param directory The directory containing dataset files.
+ * @return Vector of dataset file paths.
+ */
+auto fetch_dataset_paths(const std::string& directory) {
+    std::vector<std::string> files;
+    for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+        const std::string path = entry.path().string();
+        files.push_back(path);
+    }
+    return files;
 }
 
 }    // namespace dataset
