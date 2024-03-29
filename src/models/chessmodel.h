@@ -56,9 +56,7 @@ struct ChessModel : Model {
 
         this->compile(train_loader.batch_size);
 
-        const int val_epoch_size = epoch_size / 10;
-
-        Timer     t {};
+        Timer t {};
         for (int i = 1; i <= epochs; i++) {
             t.start();
 
@@ -93,7 +91,7 @@ struct ChessModel : Model {
             }
 
             // Validation phase
-            for (int b = 1; b <= val_epoch_size / val_loader.batch_size; b++) {
+            for (int b = 1; b <= epoch_size / val_loader.batch_size; b++) {
                 auto* ds = val_loader.next();
                 setup_inputs_and_outputs(ds);
 
