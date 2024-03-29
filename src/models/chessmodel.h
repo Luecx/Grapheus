@@ -11,6 +11,8 @@
 #include "../operations/operations.h"
 
 #include <algorithm>
+#include <optional>
+
 namespace model {
 
 using namespace nn;
@@ -45,14 +47,14 @@ struct ChessModel : Model {
      * of epochs.
      *
      * @param train_loader The batch loader for training data.
-     * @param val_loader The batch loader for validation data.
+     * @param val_loader The batch loader for validation data (optional).
      * @param epochs Number of training epochs (default: 1500).
      * @param epoch_size Number of batches per epoch (default: 1e8).
      */
-    void train(BatchLoader& train_loader,
-               BatchLoader& val_loader,
-               int          epochs     = 1500,
-               int          epoch_size = 1e8) {
+    void train(BatchLoader&                train_loader,
+               std::optional<BatchLoader>& val_loader,
+               int                         epochs     = 1500,
+               int                         epoch_size = 1e8) {
 
         this->compile(train_loader.batch_size);
 
@@ -90,19 +92,25 @@ struct ChessModel : Model {
                 }
             }
 
-            // Validation phase
-            for (int b = 1; b <= epoch_size / val_loader.batch_size; b++) {
-                auto* ds = val_loader.next();
-                setup_inputs_and_outputs(ds);
+            int val_epoch_size = epoch_size / 10;
 
-                float val_batch_loss = loss();
-                total_val_loss += val_batch_loss;
+            // Validation phase (if validation loader is provided)
+            if (val_loader.has_value()) {
+                for (int b = 1; b <= val_epoch_size / val_loader->batch_size; b++) {
+                    auto* ds = val_loader->next();
+                    setup_inputs_and_outputs(ds);
+
+                    float val_batch_loss = loss();
+                    total_val_loss += val_batch_loss;
+                }
             }
 
-            float epoch_loss = total_epoch_loss / (epoch_size / train_loader.batch_size);
-            float val_loss   = total_val_loss / (epoch_size / val_loader.batch_size);
+            float epoch_loss = total_epoch_loss / (val_epoch_size / train_loader.batch_size);
+            float val_loss   = (val_loader.has_value())
+                                   ? total_val_loss / (val_epoch_size / val_loader->batch_size)
+                                   : 0;
 
-            printf(", val_loss = [%1.8f]", val_loss);
+            printf(", val_loss = [%1.8f] ", val_loss);
             next_epoch(epoch_loss, val_loss);
             std::cout << std::endl;
         }
