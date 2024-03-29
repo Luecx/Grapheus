@@ -117,6 +117,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Epochs: " << total_epochs << "\n"
               << "Epochs Size: " << epoch_size << "\n"
+              << "Validation Size: " << val_epoch_size << "\n"
               << "Save Rate: " << save_rate << "\n"
               << "FT Size: " << ft_size << "\n"
               << "Lambda: " << lambda << "\n"
