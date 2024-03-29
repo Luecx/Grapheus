@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
         .help("Total positions in each epoch")
         .scan<'i', int>();
 
-    program.add_argument("--val--size")
+    program.add_argument("--val-size")
         .default_value(10000000)
         .help("Total positions for each validation epoch")
         .scan<'i', int>();
