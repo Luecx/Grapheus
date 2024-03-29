@@ -123,7 +123,10 @@ int main(int argc, char* argv[]) {
     BatchLoader train_loader {train_files, batch_size};
     BatchLoader val_loader {val_files, batch_size};
 
-    auto*       ds = train_loader.next();
+    train_loader.start();
+    val_loader.start();
+
+    auto* ds = train_loader.next();
 
     std::cout << ds->positions.size() << std::endl;
 
