@@ -1,6 +1,7 @@
 #include "argparse.hpp"
 #include "dataset/binpackloader.h"
 #include "dataset/io.h"
+#include "models/berserk.h"
 #include "models/koimodel.h"
 #include "models/ricemodel.h"
 
@@ -87,7 +88,7 @@ void training_with_grapheus_bin_loader(argparse::ArgumentParser& program,
         val_loader->start();
     }
 
-    model::KoiModel model {train_loader, val_loader, lambda, save_rate};
+    model::BerserkModel model {train_loader, val_loader, ft_size, lambda, save_rate};
 
     model.set_loss(MPE {2.5, true});
     model.set_lr_schedule(StepDecayLRSchedule {lr, lr_drop_ratio, lr_drop_epoch});
