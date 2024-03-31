@@ -1,5 +1,7 @@
 #include "argparse.hpp"
+#include "dataset/binpackloader.h"
 #include "dataset/io.h"
+#include "models/koimodel.h"
 #include "models/ricemodel.h"
 
 #include <fstream>
@@ -7,6 +9,109 @@
 
 using namespace nn;
 using namespace data;
+
+void training_with_binpackloader(argparse::ArgumentParser& program,
+                                 std::vector<std::string>& train_files,
+                                 std::vector<std::string>& val_files) {
+
+    const int   total_epochs              = program.get<int>("--epochs");
+    const int   epoch_size                = program.get<int>("--epoch-size");
+    const int   val_epoch_size            = program.get<int>("--val-size");
+    const int   save_rate                 = program.get<int>("--save-rate");
+    const int   ft_size                   = program.get<int>("--ft-size");
+    const float startlambda               = program.get<float>("--startlambda");
+    const float endlambda                 = program.get<float>("--endlambda");
+    const float lr                        = program.get<float>("--lr");
+    const int   batch_size                = program.get<int>("--batch-size");
+    const int   lr_drop_epoch             = program.get<int>("--lr-drop-epoch");
+    const float lr_drop_ratio             = program.get<float>("--lr-drop-ratio");
+    const int   binpackloader_concurrency = program.get<int>("--concurrency");
+
+    std::cout << "Binpackloader Concurrency: " << binpackloader_concurrency << "\n" << std::endl;
+
+    binpackloader::BinpackLoader train_loader {train_files, batch_size, binpackloader_concurrency};
+    train_loader.start();
+
+    std::optional<binpackloader::BinpackLoader> val_loader;
+    if (val_files.size() > 0) {
+        val_loader.emplace(val_files, batch_size, binpackloader_concurrency);
+        val_loader->start();
+    }
+
+    model::RiceModel model {train_loader, val_loader, ft_size, startlambda, endlambda, save_rate};
+
+    model.set_loss(MPE {2.5, true});
+    model.set_lr_schedule(StepDecayLRSchedule {lr, lr_drop_ratio, lr_drop_epoch});
+
+    auto output_dir = program.get("--output");
+    model.set_file_output(output_dir);
+    for (auto& quantizer : model.m_quantizers)
+        quantizer.set_path(output_dir);
+
+    std::cout << "Files will be saved to " << output_dir << std::endl;
+
+    if (auto previous = program.present("--resume")) {
+        model.load_weights(*previous);
+        std::cout << "Loaded weights from previous " << *previous << std::endl;
+    }
+
+    model.train(total_epochs, epoch_size, val_epoch_size);
+}
+
+void training_with_grapheus_bin_loader(argparse::ArgumentParser& program,
+                                       std::vector<std::string>& train_files,
+                                       std::vector<std::string>& val_files) {
+
+    const int   total_epochs   = program.get<int>("--epochs");
+    const int   epoch_size     = program.get<int>("--epoch-size");
+    const int   val_epoch_size = program.get<int>("--val-size");
+    const int   save_rate      = program.get<int>("--save-rate");
+    const int   ft_size        = program.get<int>("--ft-size");
+    const float lambda         = program.get<float>("--lambda");
+    const float startlambda    = program.get<float>("--startlambda");
+    const float endlambda      = program.get<float>("--endlambda");
+    const float lr             = program.get<float>("--lr");
+    const int   batch_size     = program.get<int>("--batch-size");
+    const int   lr_drop_epoch  = program.get<int>("--lr-drop-epoch");
+    const float lr_drop_ratio  = program.get<float>("--lr-drop-ratio");
+
+    using DataLoader           = dataset::BatchLoader<chess::Position>;
+
+    DataLoader                train_loader(train_files, batch_size);
+    std::optional<DataLoader> val_loader;
+
+    train_loader.start();
+
+    if (val_files.size() > 0) {
+        val_loader.emplace(val_files, batch_size);
+        val_loader->start();
+    }
+
+    model::KoiModel model {train_loader, val_loader, lambda, save_rate};
+
+    model.set_loss(MPE {2.5, true});
+    model.set_lr_schedule(StepDecayLRSchedule {lr, lr_drop_ratio, lr_drop_epoch});
+
+    auto output_dir = program.get("--output");
+    model.set_file_output(output_dir);
+    for (auto& quantizer : model.m_quantizers)
+        quantizer.set_path(output_dir);
+
+    std::cout << "Files will be saved to " << output_dir << std::endl;
+
+    if (auto previous = program.present("--resume")) {
+        model.load_weights(*previous);
+        std::cout << "Loaded weights from previous " << *previous << std::endl;
+    }
+
+    model.train(total_epochs, epoch_size, val_epoch_size);
+
+    train_loader.kill();
+
+    if (val_loader.has_value()) {
+        val_loader->kill();
+    }
+}
 
 int main(int argc, char* argv[]) {
     argparse::ArgumentParser program("Grapheus");
@@ -171,44 +276,10 @@ int main(int argc, char* argv[]) {
               << std::endl;
 
     if (is_binpack) {
-        std::cout << "Binpackloader Concurrency: " << binpackloader_concurrency << std::endl;
+        training_with_binpackloader(program, train_files, val_files);
+    } else {
+        training_with_grapheus_bin_loader(program, train_files, val_files);
     }
-
-    // using BatchLoader = dataset::BatchLoader<chess::Position>;
-    using BatchLoader = binpackloader::BinpackLoader;
-
-    BatchLoader train_loader {train_files, batch_size, binpackloader_concurrency};
-    train_loader.start();
-
-    std::optional<BatchLoader> val_loader;
-    if (val_files.size() > 0) {
-        val_loader.emplace(val_files, batch_size, binpackloader_concurrency);
-        val_loader->start();
-    }
-
-    model::RiceModel model {static_cast<size_t>(ft_size),
-                            startlambda,
-                            endlambda,
-                            static_cast<size_t>(save_rate)};
-    model.set_loss(MPE {2.5, true});
-    model.set_lr_schedule(StepDecayLRSchedule {lr, lr_drop_ratio, lr_drop_epoch});
-
-    auto output_dir = program.get("--output");
-    model.set_file_output(output_dir);
-    for (auto& quantizer : model.m_quantizers)
-        quantizer.set_path(output_dir);
-
-    std::cout << "Files will be saved to " << output_dir << std::endl;
-
-    if (auto previous = program.present("--resume")) {
-        model.load_weights(*previous);
-        std::cout << "Loaded weights from previous " << *previous << std::endl;
-    }
-
-    model.train(train_loader, val_loader, total_epochs, epoch_size, val_epoch_size);
-
-    // train_loader.kill();
-    // val_loader->kill();
 
     close();
     return 0;

@@ -6,6 +6,8 @@
 #include "../binpack/nnue_data_binpack_format.h"
 #pragma GCC diagnostic pop
 
+#include "../nn/layers/input.h"
+
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -79,6 +81,8 @@ std::function<bool(const DataEntry&)> skipPredicate = [](const DataEntry& entry)
 
 /// @brief Multithreaded dataloader to load data in Stockfish's binpack format
 struct BinpackLoader {
+    using DATAENTRY_TYPE = binpack::binpack::TrainingDataEntry;
+    using DATASET_TYPE   = std::vector<DataEntry>;
 
     static constexpr std::size_t                               ChunkSize = (1 << 22);
 
@@ -174,6 +178,64 @@ struct BinpackLoader {
         std::shuffle(permute_shuffle.begin(),
                      permute_shuffle.end(),
                      std::mt19937(std::random_device()()));
+    }
+
+    static auto loadFen(const std::string& fen) {
+        binpack::chess::Position pos;
+        pos.set(fen);
+
+        binpackloader::DataEntry entry;
+        entry.pos    = pos;
+        entry.score  = 0;
+        entry.result = 0;
+
+        return entry;
+    }
+
+    static auto get_p_value(const DataEntry& entry) {
+        return entry.score;
+    }
+
+    static auto get_w_value(const DataEntry& entry) {
+        return entry.result;
+    }
+
+    template<typename InputIndexFunction>
+    static void set_features(const int          batch,
+                             const DataEntry&   entry,
+                             nn::SparseInput*   in1,
+                             nn::SparseInput*   in2,
+                             InputIndexFunction index) {
+        const auto& pos     = entry.pos;
+        const auto  wKingSq = pos.kingSquare(binpack::chess::Color::White);
+        const auto  bKingSq = pos.kingSquare(binpack::chess::Color::Black);
+
+        const auto  pieces  = pos.piecesBB();
+
+        for (auto sq : pieces) {
+            const auto         piece                 = pos.pieceAt(sq);
+            const std::uint8_t pieceType             = static_cast<uint8_t>(piece.type());
+            const std::uint8_t pieceColor            = static_cast<uint8_t>(piece.color());
+
+            auto               piece_index_white_pov = index(pieceType,
+                                               pieceColor,
+                                               static_cast<int>(sq),
+                                               static_cast<uint8_t>(binpack::chess::Color::White),
+                                               static_cast<int>(wKingSq));
+            auto               piece_index_black_pov = index(pieceType,
+                                               pieceColor,
+                                               static_cast<int>(sq),
+                                               static_cast<uint8_t>(binpack::chess::Color::Black),
+                                               static_cast<int>(bKingSq));
+
+            if (pos.sideToMove() == binpack::chess::Color::White) {
+                in1->sparse_output.set(batch, piece_index_white_pov);
+                in2->sparse_output.set(batch, piece_index_black_pov);
+            } else {
+                in2->sparse_output.set(batch, piece_index_white_pov);
+                in1->sparse_output.set(batch, piece_index_black_pov);
+            }
+        }
     }
 };
 
