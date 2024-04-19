@@ -136,8 +136,8 @@ struct BerserkModel : ChessModel {
                 idx++;
             }
 
-            float p_value = pos->m_result.score;
-            float w_value = pos->m_result.wdl;
+            float p_value = pos->m_result.score();
+            float w_value = pos->m_result.wdl();
 
             // flip if black is to move -> relative network style
             if (pos->m_meta.stm() == chess::BLACK) {

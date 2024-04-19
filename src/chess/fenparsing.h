@@ -168,8 +168,9 @@ inline Position parse_fen(const std::string& fen) {
     int8_t  wdl_int         = std::round(wdl * 2 - 1);
     int16_t cp_int          = std::round(cp);
 
-    position.m_result.score = cp_int;
-    position.m_result.wdl   = wdl_int;
+
+    position.m_result.set_score(cp_int);
+    position.m_result.set_wdl  (wdl_int);
 
     return position;
 }
@@ -244,8 +245,8 @@ inline std::string write_fen(const Position& position, bool write_score = false)
 
     if (write_score) {
         ss << " [";
-        ss << (position.m_result.wdl == WIN ? "1" : (position.m_result.wdl == LOSS ? "0" : "0.5"));
-        ss << "] " << position.m_result.score;
+        ss << (position.m_result.wdl() == WIN ? "1" : (position.m_result.wdl() == LOSS ? "0" : "0.5"));
+        ss << "] " << position.m_result.score();
     }
 
     return ss.str();

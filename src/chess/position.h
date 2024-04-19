@@ -17,7 +17,8 @@ struct Position : dataset::DataSetEntry {
     PieceList               m_pieces {};
     BB                      m_occupancy {};
     PositionMetaInformation m_meta {};
-    Result                  m_result {};
+    Result                  m_result  {};
+    Result                  m_result2 {};
 
     template<Color color>
     Square get_king_square() {
