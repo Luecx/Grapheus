@@ -111,8 +111,9 @@ inline Position parse_fen(const std::string& fen) {
     // read castling rights
     // -----------------------------------------------------------------------------------------------
     for (; character_index < fen.size() && fen[character_index] != ' '; character_index++) {
-        if (fen[character_index] == '-')
+        if (fen[character_index] == '-') {
             continue;
+        }
         FenCharacter& ch    = fen_character_lookup[fen[character_index]];
         Side          side  = type_of(ch.piece) == QUEEN ? QUEEN_SIDE : KING_SIDE;
         Color         color = color_of(ch.piece);
@@ -155,22 +156,19 @@ inline Position parse_fen(const std::string& fen) {
     // -----------------------------------------------------------------------------------------------
     // read wdl and cp values
     // -----------------------------------------------------------------------------------------------
-    auto left_bracket_pos  = fen.find_first_of('[', character_index);
-    auto right_bracket_pos = fen.find_first_of(']', character_index);
+    auto remaining_string = fen.substr(character_index);
+    std::stringstream ss(remaining_string);
+    float wdl, cp1, cp2;
 
-    if (left_bracket_pos == std::string::npos || right_bracket_pos == std::string::npos) {
-        return position;
-    }
-
-    auto    wdl             = std::stof(fen.substr(left_bracket_pos + 1, right_bracket_pos));
-    auto    cp              = std::stof(fen.substr(right_bracket_pos + 1, fen.size()));
+    ss >> wdl >> cp1 >> cp2;
 
     int8_t  wdl_int         = std::round(wdl * 2 - 1);
-    int16_t cp_int          = std::round(cp);
+    int16_t cp1_int         = std::round(cp1);
+    int16_t cp2_int         = std::round(cp2);
 
-
-    position.m_result.set_score(cp_int);
     position.m_result.set_wdl  (wdl_int);
+    position.m_result.set_score(cp1_int);
+    position.m_result2.set_score(cp2_int); // Ensure m_result2 is correctly defined
 
     return position;
 }
@@ -244,9 +242,10 @@ inline std::string write_fen(const Position& position, bool write_score = false)
     ss << " " << (int) position.m_meta.move_count();
 
     if (write_score) {
-        ss << " [";
-        ss << (position.m_result.wdl() == WIN ? "1" : (position.m_result.wdl() == LOSS ? "0" : "0.5"));
-        ss << "] " << position.m_result.score();
+        ss << " ";
+        ss << ((position.m_result.wdl() == WIN) ? "1" : ((position.m_result.wdl() == LOSS) ? "0" : "0.5"));
+        ss << " " << position.m_result.score();
+        ss << " " << position.m_result2.score();
     }
 
     return ss.str();

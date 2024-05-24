@@ -25,7 +25,6 @@ struct ChessModel : Model {
      * Override `setup_inputs_and_outputs` to define inputs.
      * `lambda`: CP Score to WDL ratio.
      */
-
     float lambda;
 
     ChessModel(float lambda_)
