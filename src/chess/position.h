@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../dataset/dataset.h"
 #include "bitboard.h"
 #include "piece.h"
 #include "piecelist.h"

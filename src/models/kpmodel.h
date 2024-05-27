@@ -9,25 +9,48 @@ struct KPModel : ChessModel {
     SparseInput* in1;
     SparseInput* in2;
 
+    DenseInput*  in_big;
+    DenseInput*  in_offset;
+    DenseInput*  in_one;
+
+    const float in_scaling = 340;
+    const float out_scaling = 380;
+    const float offset = 270;
+
     KPModel(size_t n_ft, float lambda, size_t save_rate)
         : ChessModel(lambda) {
 
-        in1                    = add<SparseInput>(4 * 64 * 64, 32);
-        in2                    = add<SparseInput>(4 * 64 * 64, 32);
+        in1 = add<SparseInput>(4 * 64 * 64, 32);
+        in2 = add<SparseInput>(4 * 64 * 64, 32);
 
         auto ft = add<FeatureTransformer>(in1, in2, 512);
         auto re = add<ReLU>(ft);
         auto af = add<Affine>(re, 1);
-        auto sm = add<Sigmoid>(af, 2.5 / 400);
 
-        add_optimizer(AdamWarmup({{OptimizerEntry {&ft->weights}},
+        // setting the input of the main network with exactly one neuron
+        in_big    = add<DenseInput>(1);
+        in_offset = add<DenseInput>(1);
+        in_one    = add<DenseInput>(1);
+
+        // network eval (scorenet)
+        auto scorenet = add<WeightedSum>(in_big, af, 1, 1);
+        // q  = ( scorenet - offset) / in_scaling
+        // qm = (-scorenet - offset) / in_scaling
+        auto q   = add<WeightedSum>(scorenet, in_offset,   1 / in_scaling, -1 / in_scaling);
+        auto qm  = add<WeightedSum>(scorenet, in_offset, - 1 / in_scaling, -1 / in_scaling);
+        auto qs1 = add<Sigmoid>(q,  1.0);
+        auto qs2 = add<Sigmoid>(qm, 1.0);
+        // qf = 0.5 * (1.0 + q.sigmoid() - qm.sigmoid())
+        auto qfa = add<WeightedSum>(in_one, qs1, 1.0, 1.0);
+        auto qf  = add<WeightedSum>(qfa, qs2, 0.5, -0.5);
+
+        add_optimizer(Adam({{OptimizerEntry {&ft->weights}},
                             {OptimizerEntry {&ft->bias}},
                             {OptimizerEntry {&af->weights}},
                             {OptimizerEntry {&af->bias}}},
                            0.9,
                            0.999,
-                           1e-8,
-                           5 * 16384));
+                           1e-8));
 
         set_save_frequency(save_rate);
         add_quantization(Quantizer {
@@ -116,9 +139,13 @@ struct KPModel : ChessModel {
 
             // flip if black is to move -> relative network style
             if (pos->m_meta.stm() == chess::BLACK) {
-                p_value = -p_value;
+                // p_value = -p_value;  <-- score is already relative from pov
                 w_value = -w_value;
             }
+
+            float p  = ( p_value - offset) / out_scaling;
+            float pm = (-p_value - offset) / out_scaling;
+            float pf = 0.5 * (1.0 + (1) / (1 + std::exp(-p)) - (1) / (1 + std::exp(-pm)));
 
             float p_target = 1 / (1 + expf(-p_value * 2.5f / 400.0f));
             float w_target = (w_value + 1) / 2.0f;
