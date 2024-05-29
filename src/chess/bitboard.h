@@ -3,7 +3,9 @@
 
 #include <iostream>
 #ifndef __ARM__
+#ifndef NO_IMMINTRIN
 #include <immintrin.h>
+#endif
 #endif
 
 #if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
@@ -67,42 +69,6 @@ inline Square lsb(BB bb) {
 #endif
 }
 
-/**
- * returns the index of the nth set bit, starting at the lsb
- * @param bb
- * @return
- */
-inline Square nlsb(BB bb, Square n) {
-
-#ifdef __ARM__
-https:    // stackoverflow.com/questions/7669057/find-nth-set-bit-in-an-int
-    n += 1;
-    BB shifted = 0;    // running total
-    BB nBits;          // value for this iteration
-
-    // handle no solution
-    if (n > bitCount(bb))
-        return 64;
-
-    while (n > 7) {
-        // for large n shift out lower n-1 bits from v.
-        nBits = n - 1;
-        n -= bitCount(bb & ((1 << nBits) - 1));
-        bb >>= nBits;
-        shifted += nBits;
-    }
-
-    BB next;
-    // n is now small, clear out n-1 bits and return the next bit
-    // v&(v-1): a well known software trick to remove the lowest set bit.
-    while (next = bb & (bb - 1), --n) {
-        bb = next;
-    }
-    return bitscanForward((bb ^ next) << shifted);
-#else
-    return lsb(_pdep_u64(1ULL << n, bb));
-#endif
-}
 
 /**
  * returns the amount of set bits in the given bitboard.
@@ -124,6 +90,35 @@ inline int popcount(BB bb, int pos) {
     BB mask = ((BB) 1 << pos) - 1;
     return popcount(bb & mask);
 }
+
+
+/**
+ * returns the index of the nth set bit, starting at the lsb
+ * @param bb
+ * @return
+ */
+inline Square nlsb(BB bb, Square n) {
+
+//#ifdef __ARM__
+    // Scatter the bit '1ULL << n' across the bits of 'bb'
+    BB result = 0;
+    for (BB mask = 1; bb != 0; mask <<= 1) {
+        if (bb & 1) {
+            if (n == 0) {
+                result |= mask;
+                break;
+            }
+            --n;
+        }
+        bb >>= 1;
+    }
+    return lsb(result);
+//#else
+//    return lsb(_pdep_u64(1ULL << n, bb));
+//#endif
+}
+
+
 
 /**
  * resets the lsb in the given number and returns the result.
