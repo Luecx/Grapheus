@@ -112,7 +112,12 @@ bool is_readable(const std::string& file) {
     }
 
     DataSetHeader header {};
-    fread(&header, sizeof(DataSetHeader), 1, f);
+    auto freadresult = fread(&header, sizeof(DataSetHeader), 1, f);
+
+    if (freadresult != 1) {
+        fclose(f);
+        return false;
+    }
 
     auto expected_size = header.entry_count * sizeof(TYPE) + sizeof(DataSetHeader);
 

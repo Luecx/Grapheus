@@ -5,6 +5,7 @@
 #include "piecelist.h"
 #include "positionmeta.h"
 #include "result.h"
+#include "../dataset/dataset.h"
 
 #include <iomanip>
 #include <ostream>
