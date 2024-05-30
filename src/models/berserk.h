@@ -39,7 +39,7 @@ struct BerserkModel : ChessModel {
         auto        sigmoid    = add<Sigmoid>(pos_eval, sigmoid_scale);
 
         const float hidden_max = 127.0 / quant_two;
-        add_optimizer(AdamWarmup({{OptimizerEntry {&ft->weights}},
+        add_optimizer(Adam({{OptimizerEntry {&ft->weights}},
                                   {OptimizerEntry {&ft->bias}},
                                   {OptimizerEntry {&l1->weights}.clamp(-hidden_max, hidden_max)},
                                   {OptimizerEntry {&l1->bias}},
@@ -49,8 +49,7 @@ struct BerserkModel : ChessModel {
                                   {OptimizerEntry {&pos_eval->bias}}},
                                  0.95,
                                  0.999,
-                                 1e-8,
-                                 5 * 16384));
+                                 1e-8));
 
         set_save_frequency(save_rate);
         add_quantization(Quantizer {
@@ -117,9 +116,14 @@ struct BerserkModel : ChessModel {
             chess::BB     bb {pos->m_occupancy};
             int           idx = 0;
 
+
             while (bb) {
                 chess::Square sq                    = chess::lsb(bb);
                 chess::Piece  pc                    = pos->m_pieces.get_piece(idx);
+
+                if (pc != chess::PAWN || pc != chess::KING) {
+                    continue;
+                }
 
                 auto          piece_index_white_pov = index(sq, pc, wKingSq, chess::WHITE);
                 auto          piece_index_black_pov = index(sq, pc, bKingSq, chess::BLACK);

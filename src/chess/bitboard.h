@@ -101,18 +101,23 @@ inline Square nlsb(BB bb, Square n) {
 
 //#ifdef __ARM__
     // Scatter the bit '1ULL << n' across the bits of 'bb'
-    BB result = 0;
-    for (BB mask = 1; bb != 0; mask <<= 1) {
-        if (bb & 1) {
-            if (n == 0) {
-                result |= mask;
-                break;
-            }
-            --n;
-        }
-        bb >>= 1;
+//    BB result = 0;
+//    for (BB mask = 1; bb != 0; mask <<= 1) {
+//        if (bb & 1) {
+//            if (n == 0) {
+//                result |= mask;
+//                break;
+//            }
+//            --n;
+//        }
+//        bb >>= 1;
+//    }
+//    return lsb(result);
+    while (n > 0 && bb != 0) {
+        bb &= (bb - 1); // Remove the least significant bit
+        --n;
     }
-    return lsb(result);
+    return lsb(bb);
 //#else
 //    return lsb(_pdep_u64(1ULL << n, bb));
 //#endif

@@ -1,4 +1,5 @@
 #include "argparse.hpp"
+#include "models/kpmodel.h"
 #include "models/berserk.h"
 
 #include <fstream>
@@ -137,7 +138,7 @@ int main(int argc, char* argv[]) {
         val_loader->start();
     }
 
-    model::BerserkModel model {static_cast<size_t>(ft_size), lambda, static_cast<size_t>(save_rate)};
+    model::KPModel model {static_cast<size_t>(ft_size), lambda, static_cast<size_t>(save_rate)};
     model.set_loss(MPE {2.5, true});
     model.set_lr_schedule(StepDecayLRSchedule {lr, lr_drop_ratio, lr_drop_epoch});
 

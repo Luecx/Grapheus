@@ -33,16 +33,19 @@ struct KPModel : ChessModel {
         in_one    = add<DenseInput>(1);
 
         // network eval (scorenet)
-        auto scorenet = add<WeightedSum>(in_big, af, 1, 1);
-        // q  = ( scorenet - offset) / in_scaling
-        // qm = (-scorenet - offset) / in_scaling
-        auto q   = add<WeightedSum>(scorenet, in_offset,   1 / in_scaling, -1 / in_scaling);
-        auto qm  = add<WeightedSum>(scorenet, in_offset, - 1 / in_scaling, -1 / in_scaling);
-        auto qs1 = add<Sigmoid>(q,  1.0);
-        auto qs2 = add<Sigmoid>(qm, 1.0);
-        // qf = 0.5 * (1.0 + q.sigmoid() - qm.sigmoid())
-        auto qfa = add<WeightedSum>(in_one, qs1, 1.0, 1.0);
-        auto qf  = add<WeightedSum>(qfa, qs2, 0.5, -0.5);
+//        auto scorenet = add<WeightedSum>(in_big, af, 1, 1);
+
+        auto sigmoid  = add<Sigmoid>(af, 2.5 / 400);
+
+//        // q  = ( scorenet - offset) / in_scaling
+//        // qm = (-scorenet - offset) / in_scaling
+//        auto q   = add<WeightedSum>(scorenet, in_offset,   1 / in_scaling, -1 / in_scaling);
+//        auto qm  = add<WeightedSum>(scorenet, in_offset, - 1 / in_scaling, -1 / in_scaling);
+//        auto qs1 = add<Sigmoid>(q,  1.0);
+//        auto qs2 = add<Sigmoid>(qm, 1.0);
+//        // qf = 0.5 * (1.0 + q.sigmoid() - qm.sigmoid())
+//        auto qfa = add<WeightedSum>(in_one, qs1, 1.0, 1.0);
+//        auto qf  = add<WeightedSum>(qfa, qs2, 0.5, -0.5);
 
         add_optimizer(Adam({{OptimizerEntry {&ft->weights}},
                             {OptimizerEntry {&ft->bias}},
@@ -94,7 +97,7 @@ struct KPModel : ChessModel {
 
         auto& target = m_loss->target;
 
-#pragma omp parallel for schedule(static) num_threads(6)
+#pragma omp parallel for schedule(static) num_threads(1)
         for (int b = 0; b < positions->header.entry_count; b++) {
             chess::Position* pos = &positions->positions[b];
 
@@ -114,16 +117,14 @@ struct KPModel : ChessModel {
                 auto          piece_index_white_pov = index(sq, pc, wKingSq, chess::WHITE);
                 auto          piece_index_black_pov = index(sq, pc, bKingSq, chess::BLACK);
 
-                if (pc != chess::PAWN || pc != chess::KING) {
-                    continue;
-                }
-
-                if (pos->m_meta.stm() == chess::WHITE) {
-                    in1->sparse_output.set(b, piece_index_white_pov);
-                    in2->sparse_output.set(b, piece_index_black_pov);
-                } else {
-                    in2->sparse_output.set(b, piece_index_white_pov);
-                    in1->sparse_output.set(b, piece_index_black_pov);
+                if (pc == chess::PAWN || pc == chess::KING) {
+                    if (pos->m_meta.stm() == chess::WHITE) {
+                        in1->sparse_output.set(b, piece_index_white_pov);
+                        in2->sparse_output.set(b, piece_index_black_pov);
+                    } else {
+                        in2->sparse_output.set(b, piece_index_white_pov);
+                        in1->sparse_output.set(b, piece_index_black_pov);
+                    }
                 }
 
                 bb = chess::lsb_reset(bb);
@@ -131,11 +132,14 @@ struct KPModel : ChessModel {
             }
 
 
+
             // -----------------------------------------------------
             // compute the target values for the network
             // -----------------------------------------------------
-            float p_value = pos->m_result.score();
-            float w_value = pos->m_result.wdl();
+
+            float p_value  = pos->m_result.score();
+            float w_value  = pos->m_result.wdl();
+            float pb_value = pos->m_result2.score();
 
             // flip if black is to move -> relative network style
             if (pos->m_meta.stm() == chess::BLACK) {
@@ -143,14 +147,18 @@ struct KPModel : ChessModel {
                 w_value = -w_value;
             }
 
+            // set input of the big input
+            in_big->dense_output.values(0, b)    = pb_value;
+            in_offset->dense_output.values(0, b) = offset;
+            in_one->dense_output.values(0, b)    = 1;
+
             float p  = ( p_value - offset) / out_scaling;
             float pm = (-p_value - offset) / out_scaling;
             float pf = 0.5 * (1.0 + (1) / (1 + std::exp(-p)) - (1) / (1 + std::exp(-pm)));
 
-            float p_target = 1 / (1 + expf(-p_value * 2.5f / 400.0f));
             float w_target = (w_value + 1) / 2.0f;
 
-            target(b)      = lambda * p_target + (1.0 - lambda) * w_target;
+            target(b)      = w_target;
         }
     }
 };
