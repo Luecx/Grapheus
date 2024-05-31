@@ -35,8 +35,6 @@ struct KPModel : ChessModel {
         // network eval (scorenet)
         auto scorenet = add<WeightedSum>(in_big, af, 1, 1);
 
-//        auto sigmoid  = add<Sigmoid>(scorenet, 2.5 / 400);
-
         // q  = ( scorenet - offset) / in_scaling
         // qm = (-scorenet - offset) / in_scaling
         auto q   = add<WeightedSum>(scorenet, in_offset,   1 / in_scaling, -1 / in_scaling);
