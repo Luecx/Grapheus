@@ -19,7 +19,7 @@ struct BerserkModel : ChessModel {
     const size_t n_out         = 1;
 
     BerserkModel(size_t n_ft, float lambda, size_t save_rate)
-        : ChessModel(lambda) {
+        : ChessModel(lambda, lambda, 1) {
 
         in1                    = add<SparseInput>(n_features, 32);
         in2                    = add<SparseInput>(n_features, 32);
@@ -99,7 +99,7 @@ struct BerserkModel : ChessModel {
         return king_square_index(oK) * 12 * 64 + oP * 64 + oSq;
     }
 
-    void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions) {
+    void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions, int epoch=0) {
         in1->sparse_output.clear();
         in2->sparse_output.clear();
 
@@ -152,7 +152,7 @@ struct BerserkModel : ChessModel {
             float p_target = 1 / (1 + expf(-p_value * sigmoid_scale));
             float w_target = (w_value + 1) / 2.0f;
 
-            target(b)      = lambda * p_target + (1.0 - lambda) * w_target;
+            target(b)      = get_lambda(epoch) * p_target + (1.0 - get_lambda(epoch)) * w_target;
 
             // layer_selector->dense_output.values(b, 0) =
             //     (int) ((chess::popcount(pos->m_occupancy) - 1) / 4);

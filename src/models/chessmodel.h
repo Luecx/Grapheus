@@ -25,10 +25,24 @@ struct ChessModel : Model {
      * Override `setup_inputs_and_outputs` to define inputs.
      * `lambda`: CP Score to WDL ratio.
      */
-    float lambda;
+    float lambda_begin;
+    float lambda_end;
+    int   epoch_end;
 
-    ChessModel(float lambda_)
-        : lambda(lambda_) {}
+    ChessModel(float lambda_begin_, float lambda_end_, int epoch_end_)
+        : lambda_begin(lambda_begin_), lambda_end(lambda_end_), epoch_end(epoch_end_) {}
+
+    /**
+     * @brief Lambda function for CP Score to WDL ratio.
+     * @param epoch
+     * @return
+     */
+    float get_lambda(int epoch) {
+        // remain at lambda end after epoch end
+        return (epoch < epoch_end)
+                   ? lambda_begin + (lambda_end - lambda_begin) * (float)epoch / epoch_end
+                   : lambda_end;
+    }
 
     /**
      * @brief Set up inputs and outputs for the model.
@@ -37,7 +51,7 @@ struct ChessModel : Model {
      * This function should be implemented in derived classes to specify how inputs and outputs are
      * prepared.
      */
-    virtual void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions) = 0;
+    virtual void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions, int epoch=0) = 0;
 
     using BatchLoader = dataset::BatchLoader<chess::Position>;
 

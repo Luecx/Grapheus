@@ -9,7 +9,7 @@ struct KoiModel : ChessModel {
     SparseInput* in2;
 
     KoiModel(float lambda, size_t save_rate)
-        : ChessModel(lambda) {
+        : ChessModel(lambda, lambda, 1) {
         in1     = add<SparseInput>(16 * 12 * 64, 32);
         in2     = add<SparseInput>(16 * 12 * 64, 32);
 

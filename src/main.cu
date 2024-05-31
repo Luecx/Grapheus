@@ -40,6 +40,18 @@ int main(int argc, char* argv[]) {
         .default_value(0.0f)
         .help("Ratio of evaluation scored to use while training")
         .scan<'f', float>();
+    program.add_argument("--lambda-start")
+        .default_value(-1.0f)
+        .help("Starting value for lambda")
+        .scan<'f', float>();
+    program.add_argument("--lambda-end")
+        .default_value(-1.0f)
+        .help("Ending value for lambda")
+        .scan<'f', float>();
+    program.add_argument("--lambda-end-epoch")
+        .default_value(-1)
+        .help("Epoch to reach the ending value for lambda")
+        .scan<'i', int>();
     program.add_argument("--lr")
         .default_value(0.001f)
         .help("The starting learning rate for the optimizer")
@@ -105,16 +117,27 @@ int main(int argc, char* argv[]) {
                   << std::endl;
     }
 
+    std::cout << "Starting training..." << std::endl;
     const int   total_epochs   = program.get<int>("--epochs");
     const int   epoch_size     = program.get<int>("--epoch-size");
     const int   val_epoch_size = program.get<int>("--val-size");
     const int   save_rate      = program.get<int>("--save-rate");
     const int   ft_size        = program.get<int>("--ft-size");
-    const float lambda         = program.get<float>("--lambda");
     const float lr             = program.get<float>("--lr");
+    const float lambda         = program.get<float>("--lambda");
     const int   batch_size     = program.get<int>("--batch-size");
     const int   lr_drop_epoch  = program.get<int>("--lr-drop-epoch");
     const float lr_drop_ratio  = program.get<float>("--lr-drop-ratio");
+
+    // Lambda handling
+    float lambda_start   = program.get<float>("--lambda-start");
+    float lambda_end     = program.get<float>("--lambda-end");
+    int lambda_end_epoch = program.get<int>("--lambda-end-epoch");
+
+    // Set default values if custom values are not provided
+    if (lambda_start == -1.0f) lambda_start = lambda;
+    if (lambda_end == -1.0f) lambda_end = lambda;
+    if (lambda_end_epoch == -1) lambda_end_epoch = total_epochs;
 
     std::cout << "Epochs: " << total_epochs << "\n"
               << "Epochs Size: " << epoch_size << "\n"
@@ -138,7 +161,7 @@ int main(int argc, char* argv[]) {
         val_loader->start();
     }
 
-    model::KPModel model {static_cast<size_t>(ft_size), lambda, static_cast<size_t>(save_rate)};
+    model::KPModel model {static_cast<size_t>(ft_size), lambda_start, lambda_end, lambda_end_epoch, static_cast<size_t>(save_rate)};
     model.set_loss(MPE {2.5, true});
     model.set_lr_schedule(StepDecayLRSchedule {lr, lr_drop_ratio, lr_drop_epoch});
 

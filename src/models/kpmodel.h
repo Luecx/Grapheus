@@ -17,8 +17,8 @@ struct KPModel : ChessModel {
     const float out_scaling = 380;
     const float offset = 270;
 
-    KPModel(size_t n_ft, float lambda, size_t save_rate)
-        : ChessModel(lambda) {
+    KPModel(size_t n_ft, float lambda, float lambda_end, int end_epoch, size_t save_rate)
+        : ChessModel(lambda, lambda_end, end_epoch) {
 
         in1 = add<SparseInput>(4 * 64 * 64, 32);
         in2 = add<SparseInput>(4 * 64 * 64, 32);
@@ -33,19 +33,19 @@ struct KPModel : ChessModel {
         in_one    = add<DenseInput>(1);
 
         // network eval (scorenet)
-//        auto scorenet = add<WeightedSum>(in_big, af, 1, 1);
+        auto scorenet = add<WeightedSum>(in_big, af, 1, 1);
 
-        auto sigmoid  = add<Sigmoid>(af, 2.5 / 400);
+//        auto sigmoid  = add<Sigmoid>(scorenet, 2.5 / 400);
 
-//        // q  = ( scorenet - offset) / in_scaling
-//        // qm = (-scorenet - offset) / in_scaling
-//        auto q   = add<WeightedSum>(scorenet, in_offset,   1 / in_scaling, -1 / in_scaling);
-//        auto qm  = add<WeightedSum>(scorenet, in_offset, - 1 / in_scaling, -1 / in_scaling);
-//        auto qs1 = add<Sigmoid>(q,  1.0);
-//        auto qs2 = add<Sigmoid>(qm, 1.0);
-//        // qf = 0.5 * (1.0 + q.sigmoid() - qm.sigmoid())
-//        auto qfa = add<WeightedSum>(in_one, qs1, 1.0, 1.0);
-//        auto qf  = add<WeightedSum>(qfa, qs2, 0.5, -0.5);
+        // q  = ( scorenet - offset) / in_scaling
+        // qm = (-scorenet - offset) / in_scaling
+        auto q   = add<WeightedSum>(scorenet, in_offset,   1 / in_scaling, -1 / in_scaling);
+        auto qm  = add<WeightedSum>(scorenet, in_offset, - 1 / in_scaling, -1 / in_scaling);
+        auto qs1 = add<Sigmoid>(q,  1.0);
+        auto qs2 = add<Sigmoid>(qm, 1.0);
+        // qf = 0.5 * (1.0 + q.sigmoid() - qm.sigmoid())
+        auto qfa = add<WeightedSum>(in_one, qs1, 1.0, 1.0);
+        auto qf  = add<WeightedSum>(qfa, qs2, 0.5, -0.5);
 
         add_optimizer(Adam({{OptimizerEntry {&ft->weights}},
                             {OptimizerEntry {&ft->bias}},
@@ -91,7 +91,7 @@ struct KPModel : ChessModel {
                piece_square;
     }
 
-    void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions) {
+    void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions, int epoch=0) {
         in1->sparse_output.clear();
         in2->sparse_output.clear();
 
@@ -156,9 +156,11 @@ struct KPModel : ChessModel {
             float pm = (-p_value - offset) / out_scaling;
             float pf = 0.5 * (1.0 + (1) / (1 + std::exp(-p)) - (1) / (1 + std::exp(-pm)));
 
+            float lam = this->get_lambda(epoch);
+
             float w_target = (w_value + 1) / 2.0f;
 
-            target(b)      = w_target;
+            target(b)      = pf * lam + (1.0 - lam) * w_target;
         }
     }
 };
