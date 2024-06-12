@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../misc/assert.h"
+#include "../nn/layers/input.h"
 #include "dataset.h"
 #include "io.h"
 
@@ -13,6 +14,9 @@ namespace dataset {
 
 template<typename TYPE>
 struct BatchLoader {
+    using DATAENTRY_TYPE = TYPE;
+    using DATASET_TYPE   = DataSet<TYPE>;
+
     int           batch_size;
     DataSet<TYPE> active_batch;
 
@@ -127,7 +131,7 @@ struct BatchLoader {
         }
     }
 
-    DataSet<TYPE>* next() {
+    DataSet<TYPE>& next() {
         // wait until loaded
         while (!next_batch_loaded)
             ;
@@ -135,7 +139,52 @@ struct BatchLoader {
         // copy to active batch
         active_batch.positions.assign(load_buffer.positions.begin(), load_buffer.positions.end());
         next_batch_loaded = false;
-        return &active_batch;
+        return active_batch;
+    }
+
+    static auto loadFen(const std::string& fen) {
+        chess::Position pos = chess::parse_fen(fen);
+        return pos;
+    }
+
+    static auto get_w_value(const chess::Position& pos) {
+        return pos.m_result.wdl;
+    }
+
+    static auto get_p_value(const chess::Position& pos) {
+        return pos.m_result.score;
+    }
+
+    template<typename InputIndexFunction>
+    static void set_features(const int          batch,
+                             chess::Position&   pos,
+                             nn::SparseInput*   in1,
+                             nn::SparseInput*   in2,
+                             InputIndexFunction index) {
+        chess::Square wKingSq = pos.get_king_square<chess::WHITE>();
+        chess::Square bKingSq = pos.get_king_square<chess::BLACK>();
+
+        chess::BB     bb {pos.m_occupancy};
+        int           idx = 0;
+
+        while (bb) {
+            chess::Square sq                    = chess::lsb(bb);
+            chess::Piece  pc                    = pos.m_pieces.get_piece(idx);
+
+            auto          piece_index_white_pov = index(sq, pc, wKingSq, chess::WHITE);
+            auto          piece_index_black_pov = index(sq, pc, bKingSq, chess::BLACK);
+
+            if (pos.m_meta.stm() == chess::WHITE) {
+                in1->sparse_output.set(batch, piece_index_white_pov);
+                in2->sparse_output.set(batch, piece_index_black_pov);
+            } else {
+                in2->sparse_output.set(batch, piece_index_white_pov);
+                in1->sparse_output.set(batch, piece_index_black_pov);
+            }
+
+            bb = chess::lsb_reset(bb);
+            idx++;
+        }
     }
 };
 

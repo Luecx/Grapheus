@@ -4,7 +4,8 @@
 
 namespace model {
 
-struct BerserkModel : ChessModel {
+struct BerserkModel : ChessModel<dataset::BatchLoader<chess::Position>> {
+    using DataLoader = dataset::BatchLoader<chess::Position>;
 
     SparseInput* in1;
     SparseInput* in2;
@@ -18,8 +19,15 @@ struct BerserkModel : ChessModel {
     const size_t n_l2          = 32;
     const size_t n_out         = 1;
 
-    BerserkModel(size_t n_ft, float lambda, size_t save_rate)
-        : ChessModel(lambda) {
+    float        lambda        = 0.5;
+
+    BerserkModel(DataLoader&                train_loader,
+                 std::optional<DataLoader>& val_loader,
+                 size_t                     n_ft,
+                 float                      lambda,
+                 size_t                     save_rate)
+        : ChessModel(train_loader, val_loader)
+        , lambda(lambda) {
 
         in1                    = add<SparseInput>(n_features, 32);
         in2                    = add<SparseInput>(n_features, 32);
@@ -67,7 +75,7 @@ struct BerserkModel : ChessModel {
         });
     }
 
-    inline int king_square_index(int relative_king_square) {
+    static inline int king_square_index(int relative_king_square) {
         constexpr int indices[64] {
             -1, -1, -1, -1, 14, 14, 15, 15,    //
             -1, -1, -1, -1, 14, 14, 15, 15,    //
@@ -82,10 +90,10 @@ struct BerserkModel : ChessModel {
         return indices[relative_king_square];
     }
 
-    inline int index(chess::Square piece_square,
-                     chess::Piece  piece,
-                     chess::Square king_square,
-                     chess::Color  view) {
+    static inline int index(chess::Square piece_square,
+                            chess::Piece  piece,
+                            chess::Square king_square,
+                            chess::Color  view) {
 
         const chess::PieceType piece_type  = chess::type_of(piece);
         const chess::Color     piece_color = chess::color_of(piece);
@@ -100,47 +108,23 @@ struct BerserkModel : ChessModel {
         return king_square_index(oK) * 12 * 64 + oP * 64 + oSq;
     }
 
-    void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions) {
+    void setup_inputs_and_outputs(dataset::DataSet<chess::Position>& positions) {
         in1->sparse_output.clear();
         in2->sparse_output.clear();
 
         auto& target = m_loss->target;
 
 #pragma omp parallel for schedule(static) num_threads(6)
-        for (int b = 0; b < positions->header.entry_count; b++) {
-            chess::Position* pos = &positions->positions[b];
-            // fill in the inputs and target values
+        for (int b = 0; b < positions.header.entry_count; b++) {
+            auto& pos = positions.positions[b];
 
-            chess::Square wKingSq = pos->get_king_square<chess::WHITE>();
-            chess::Square bKingSq = pos->get_king_square<chess::BLACK>();
+            DataLoader::set_features(b, pos, in1, in2, index);
 
-            chess::BB     bb {pos->m_occupancy};
-            int           idx = 0;
-
-            while (bb) {
-                chess::Square sq                    = chess::lsb(bb);
-                chess::Piece  pc                    = pos->m_pieces.get_piece(idx);
-
-                auto          piece_index_white_pov = index(sq, pc, wKingSq, chess::WHITE);
-                auto          piece_index_black_pov = index(sq, pc, bKingSq, chess::BLACK);
-
-                if (pos->m_meta.stm() == chess::WHITE) {
-                    in1->sparse_output.set(b, piece_index_white_pov);
-                    in2->sparse_output.set(b, piece_index_black_pov);
-                } else {
-                    in2->sparse_output.set(b, piece_index_white_pov);
-                    in1->sparse_output.set(b, piece_index_black_pov);
-                }
-
-                bb = chess::lsb_reset(bb);
-                idx++;
-            }
-
-            float p_value = pos->m_result.score;
-            float w_value = pos->m_result.wdl;
+            float p_value = DataLoader::get_p_value(pos);
+            float w_value = DataLoader::get_w_value(pos);
 
             // flip if black is to move -> relative network style
-            if (pos->m_meta.stm() == chess::BLACK) {
+            if (pos.m_meta.stm() == chess::BLACK) {
                 p_value = -p_value;
                 w_value = -w_value;
             }
@@ -154,6 +138,13 @@ struct BerserkModel : ChessModel {
             //     (int) ((chess::popcount(pos->m_occupancy) - 1) / 4);
         }
     }
+
+    void setup_inputs_and_outputs_only(chess::Position& pos) {
+        in1->sparse_output.clear();
+        in2->sparse_output.clear();
+
+        DataLoader::set_features(0, pos, in1, in2, index);
+    }
 };
 
-}
+}    // namespace model

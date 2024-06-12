@@ -4,12 +4,20 @@
 
 namespace model {
 
-struct KoiModel : ChessModel {
+struct KoiModel : ChessModel<dataset::BatchLoader<chess::Position>> {
+    using DataLoader = dataset::BatchLoader<chess::Position>;
+
     SparseInput* in1;
     SparseInput* in2;
 
-    KoiModel(float lambda, size_t save_rate)
-        : ChessModel(lambda) {
+    float        lambda = 0.5;
+
+    KoiModel(DataLoader&                train_loader,
+             std::optional<DataLoader>& val_loader,
+             float                      lambda,
+             size_t                     save_rate)
+        : ChessModel(train_loader, val_loader)
+        , lambda(lambda) {
         in1     = add<SparseInput>(16 * 12 * 64, 32);
         in2     = add<SparseInput>(16 * 12 * 64, 32);
 
@@ -37,8 +45,7 @@ struct KoiModel : ChessModel {
         });
     }
 
-    inline int king_square_index(chess::Square relative_king_square) {
-
+    static inline int king_square_index(chess::Square relative_king_square) {
         // clang-format off
         constexpr int indices[chess::N_SQUARES] {
             0,  1,  2,  3,  3,  2,  1,  0,
@@ -55,10 +62,10 @@ struct KoiModel : ChessModel {
         return indices[relative_king_square];
     }
 
-    inline int index(chess::Square piece_square,
-                     chess::Piece  piece,
-                     chess::Square king_square,
-                     chess::Color  view) {
+    static inline int index(chess::Square piece_square,
+                            chess::Piece  piece,
+                            chess::Square king_square,
+                            chess::Color  view) {
         constexpr int          PIECE_TYPE_FACTOR  = 64;
         constexpr int          PIECE_COLOR_FACTOR = PIECE_TYPE_FACTOR * 6;
         constexpr int          KING_SQUARE_FACTOR = PIECE_COLOR_FACTOR * 2;
@@ -88,47 +95,23 @@ struct KoiModel : ChessModel {
         return index;
     }
 
-    void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions) {
+    void setup_inputs_and_outputs(dataset::DataSet<chess::Position>& positions) {
         in1->sparse_output.clear();
         in2->sparse_output.clear();
 
         auto& target = m_loss->target;
 
-#pragma omp parallel for schedule(static) num_threads(16)
-        for (int b = 0; b < positions->header.entry_count; b++) {
-            chess::Position* pos = &positions->positions[b];
-            // fill in the inputs and target values
+#pragma omp parallel for schedule(static) num_threads(6)
+        for (int b = 0; b < positions.header.entry_count; b++) {
+            auto& pos = positions.positions[b];
 
-            chess::Square wKingSq = pos->get_king_square<chess::WHITE>();
-            chess::Square bKingSq = pos->get_king_square<chess::BLACK>();
+            DataLoader::set_features(b, pos, in1, in2, index);
 
-            chess::BB     bb {pos->m_occupancy};
-            int           idx = 0;
-
-            while (bb) {
-                chess::Square sq                    = chess::lsb(bb);
-                chess::Piece  pc                    = pos->m_pieces.get_piece(idx);
-
-                auto          piece_index_white_pov = index(sq, pc, wKingSq, chess::WHITE);
-                auto          piece_index_black_pov = index(sq, pc, bKingSq, chess::BLACK);
-
-                if (pos->m_meta.stm() == chess::WHITE) {
-                    in1->sparse_output.set(b, piece_index_white_pov);
-                    in2->sparse_output.set(b, piece_index_black_pov);
-                } else {
-                    in2->sparse_output.set(b, piece_index_white_pov);
-                    in1->sparse_output.set(b, piece_index_black_pov);
-                }
-
-                bb = chess::lsb_reset(bb);
-                idx++;
-            }
-
-            float p_value = pos->m_result.score;
-            float w_value = pos->m_result.wdl;
+            float p_value = DataLoader::get_p_value(pos);
+            float w_value = DataLoader::get_w_value(pos);
 
             // flip if black is to move -> relative network style
-            if (pos->m_meta.stm() == chess::BLACK) {
+            if (pos.m_meta.stm() == chess::BLACK) {
                 p_value = -p_value;
                 w_value = -w_value;
             }
@@ -138,6 +121,13 @@ struct KoiModel : ChessModel {
 
             target(b)      = lambda * p_target + (1.0 - lambda) * w_target;
         }
+    }
+
+    void setup_inputs_and_outputs_only(chess::Position& pos) {
+        in1->sparse_output.clear();
+        in2->sparse_output.clear();
+
+        DataLoader::set_features(0, pos, in1, in2, index);
     }
 };
 }    // namespace model

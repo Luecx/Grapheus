@@ -3,8 +3,8 @@
 
 # Compiler options
 NVCC = nvcc
-CXXFLAGS = -std=c++17 -fopenmp -march=native
-NVCCFLAGS = -use_fast_math -O3 -DNDEBUG
+CXXFLAGS = -fopenmp -march=native
+NVCCFLAGS = -use_fast_math -O3 -DNDEBUG -std=c++20
 
 # Combine CXXFLAGS into NVCCFLAGS
 NVCCFLAGS += $(addprefix --compiler-options ,$(CXXFLAGS))
