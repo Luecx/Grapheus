@@ -22,6 +22,14 @@ SRCS := $(sort $(shell find $(SRCDIR) -name '*.cu'))
 OBJS := $(SRCS:$(SRCDIR)/%.cu=$(OBJDIR)/%.obj)
 EXE  := $(BINDIR)/Grapheus
 
+# Flag for using IMMINTRIN
+USE_IMMINTRIN ?= 1
+
+# If USE_IMMINTRIN is set to 0, add the -mno-avx flag
+ifeq ($(USE_IMMINTRIN), 0)
+	CXXFLAGS += -DNO_IMMINTRIN
+endif
+
 # Targets
 all: $(EXE)
 
