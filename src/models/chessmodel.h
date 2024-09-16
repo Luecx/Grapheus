@@ -18,50 +18,36 @@ namespace model {
 using namespace nn;
 using namespace data;
 
+template<typename DataLoader>
 struct ChessModel : Model {
 
-    /**
-     * @brief Versatile base class for Chess models with training setup.
-     * Override `setup_inputs_and_outputs` to define inputs.
-     * `lambda`: CP Score to WDL ratio.
-     */
+    using DataEntry = typename DataLoader::DATAENTRY_TYPE;
+    using DataSet   = typename DataLoader::DATASET_TYPE;
 
-    float lambda;
+    DataLoader&                train_loader;
+    std::optional<DataLoader>& val_loader;
 
-    ChessModel(float lambda_)
-        : lambda(lambda_) {}
+    ChessModel(DataLoader& train_loader, std::optional<DataLoader>& val_loader)
+        : train_loader(train_loader)
+        , val_loader(val_loader) {}
 
-    /**
-     * @brief Set up inputs and outputs for the model.
-     * Override this function to define inputs for the chess model.
-     * @param positions Pointer to the dataset of chess positions.
-     * This function should be implemented in derived classes to specify how inputs and outputs are
-     * prepared.
-     */
-    virtual void setup_inputs_and_outputs(dataset::DataSet<chess::Position>* positions) = 0;
+    virtual void setup_inputs_and_outputs(DataSet& positions)        = 0;
+    virtual void setup_inputs_and_outputs_only(DataEntry& positions) = 0;
 
-    using BatchLoader = dataset::BatchLoader<chess::Position>;
+    int          current_epoch                                       = 0;
+    int          max_epochs                                          = 0;
 
-    /**
-     * @brief Trains the model using the provided train and validation loaders for a specified number
-     * of epochs.
-     *
-     * @param train_loader The batch loader for training data.
-     * @param val_loader The batch loader for validation data (optional).
-     * @param epochs Number of training epochs (default: 1500).
-     * @param epoch_size Number of batches per epoch (default: 1e8).
-     */
-    void train(BatchLoader&                train_loader,
-               std::optional<BatchLoader>& val_loader,
-               int                         epochs         = 1500,
-               int                         epoch_size     = 1e8,
-               int                         val_epoch_size = 1e7) {
+    void         train(int epochs = 1500, int epoch_size = 1e8, int val_epoch_size = 1e7) {
 
         this->compile(train_loader.batch_size);
+
+        max_epochs = epochs;
 
         Timer t {};
         for (int i = 1; i <= epochs; i++) {
             t.start();
+
+            current_epoch             = i;
 
             uint64_t prev_print_tm    = 0;
             float    total_epoch_loss = 0;
@@ -69,7 +55,7 @@ struct ChessModel : Model {
 
             // Training phase
             for (int b = 1; b <= epoch_size / train_loader.batch_size; b++) {
-                auto* ds = train_loader.next();
+                auto ds = train_loader.next();
                 setup_inputs_and_outputs(ds);
 
                 float batch_loss = batch();
@@ -82,7 +68,7 @@ struct ChessModel : Model {
                     prev_print_tm = elapsed;
 
                     printf("\rep = [%4d], epoch_loss = [%1.8f], batch = [%5d], batch_loss = [%1.8f], "
-                           "speed = [%7.2f it/s], time = [%3ds]",
+                                   "speed = [%7.2f it/s], time = [%3ds]",
                            i,
                            epoch_loss,
                            b,
@@ -96,7 +82,7 @@ struct ChessModel : Model {
             // Validation phase (if validation loader is provided)
             if (val_loader.has_value()) {
                 for (int b = 1; b <= val_epoch_size / val_loader->batch_size; b++) {
-                    auto* ds = val_loader->next();
+                    auto ds = val_loader->next();
                     setup_inputs_and_outputs(ds);
 
                     float val_batch_loss = loss();
@@ -106,8 +92,8 @@ struct ChessModel : Model {
 
             float epoch_loss = total_epoch_loss / (val_epoch_size / train_loader.batch_size);
             float val_loss   = (val_loader.has_value())
-                                   ? total_val_loss / (val_epoch_size / val_loader->batch_size)
-                                   : 0;
+                                           ? total_val_loss / (val_epoch_size / val_loader->batch_size)
+                                           : 0;
 
             printf(", val_loss = [%1.8f] ", val_loss);
             next_epoch(epoch_loss, val_loss);
@@ -121,13 +107,10 @@ struct ChessModel : Model {
     void test_fen(const std::string& fen) {
         this->compile(1);
 
-        chess::Position                   pos = chess::parse_fen(fen);
-        dataset::DataSet<chess::Position> ds {};
-        ds.positions.push_back(pos);
-        ds.header.entry_count = 1;
+        DataEntry ds = DataLoader::load_fen(fen);
 
         // setup inputs of network
-        setup_inputs_and_outputs(&ds);
+        setup_inputs_and_outputs_only(ds);
 
         // forward pass
         this->upload_inputs();
@@ -159,8 +142,8 @@ struct ChessModel : Model {
     /// @param loader Batch loader for dataset input.
     /// @param batches Number of batches for processing.
     /// Iterates through batches, computes layer output stats, and prints to console.
-    void distribution(dataset::BatchLoader<chess::Position>& loader, int batches = 32) {
-        this->compile(loader.batch_size);
+    void distribution(int batches = 32) {
+        this->compile(train_loader.batch_size);
 
         using namespace data;
 
@@ -181,7 +164,7 @@ struct ChessModel : Model {
         }
 
         for (int b = 0; b < batches; b++) {
-            auto* ds = loader.next();
+            auto ds = train_loader.next();
             setup_inputs_and_outputs(ds);
             this->upload_inputs();
             this->forward();
