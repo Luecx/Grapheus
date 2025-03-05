@@ -104,7 +104,7 @@ struct ChessModel : Model {
                 }
             }
 
-            float epoch_loss = total_epoch_loss / (val_epoch_size / train_loader.batch_size);
+            float epoch_loss = total_epoch_loss / (epoch_size / train_loader.batch_size);
             float val_loss   = (val_loader.has_value())
                                    ? total_val_loss / (val_epoch_size / val_loader->batch_size)
                                    : 0;
