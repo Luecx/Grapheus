@@ -12,6 +12,7 @@ struct BerserkModel : ChessModel {
     const float  sigmoid_scale = 1.0 / 160.0;
     const float  quant_one     = 32.0;
     const float  quant_two     = 32.0;
+    const float  quant_three   = 32.0;
 
     const size_t n_features    = 16 * 12 * 64;
     const size_t n_l1          = 16;
@@ -60,10 +61,10 @@ struct BerserkModel : ChessModel {
             QuantizerEntry<int16_t>(&ft->bias.values, quant_one),
             QuantizerEntry<int8_t>(&l1->weights.values, quant_two),
             QuantizerEntry<int32_t>(&l1->bias.values, quant_two),
-            QuantizerEntry<float>(&l2->weights.values, 1.0),
-            QuantizerEntry<float>(&l2->bias.values, quant_two),
-            QuantizerEntry<float>(&pos_eval->weights.values, 1.0),
-            QuantizerEntry<float>(&pos_eval->bias.values, quant_two),
+            QuantizerEntry<int16_t>(&l2->weights.values, quant_three),
+            QuantizerEntry<int32_t>(&l2->bias.values, quant_three),
+            QuantizerEntry<int16_t>(&pos_eval->weights.values, quant_three),
+            QuantizerEntry<int32_t>(&pos_eval->bias.values, quant_three),
         });
     }
 
@@ -106,7 +107,7 @@ struct BerserkModel : ChessModel {
 
         auto& target = m_loss->target;
 
-#pragma omp parallel for schedule(static) num_threads(6)
+#pragma omp parallel for schedule(static) num_threads(4)
         for (int b = 0; b < positions->header.entry_count; b++) {
             chess::Position* pos = &positions->positions[b];
             // fill in the inputs and target values
@@ -156,4 +157,4 @@ struct BerserkModel : ChessModel {
     }
 };
 
-}
+}    // namespace model
