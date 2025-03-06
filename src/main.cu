@@ -156,7 +156,8 @@ int main(int argc, char* argv[]) {
     model.train(train_loader, val_loader, total_epochs, epoch_size, val_epoch_size);
 
     train_loader.kill();
-    val_loader->kill();
+    if (val_loader.has_value())
+        val_loader->kill();
 
     close();
     return 0;
