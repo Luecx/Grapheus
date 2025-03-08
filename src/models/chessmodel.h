@@ -228,7 +228,7 @@ struct ChessModel : Model {
             std::cout << "\n";
             float min = 10000000;
             float max = -10000000;
-            for (int m = 0; m < min_values[i].m; m++) {
+            for (int m = 0; m < min_values[i].size(); m++) {
                 min = std::min(min, min_values[i](m));
                 max = std::max(max, max_values[i](m));
             }
