@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
     if (!train_files.empty()) {
         std::cout << "Training Dataset Files:" << std::endl;
         for (const auto& file : train_files) {
-            std::cout << file << std::endl;
+            std::cout << "\t" << file << std::endl;
         }
         std::cout << "Total training files: " << train_files.size() << std::endl;
         std::cout << "Total training positions: " << dataset::count_total_positions(train_files)
@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
     if (!val_files.empty()) {
         std::cout << "Validation Dataset Files:" << std::endl;
         for (const auto& file : val_files) {
-            std::cout << file << std::endl;
+            std::cout << "\t" << file << std::endl;
         }
         std::cout << "Total validation files: " << val_files.size() << std::endl;
         std::cout << "Total validation positions: " << dataset::count_total_positions(val_files)
@@ -156,7 +156,8 @@ int main(int argc, char* argv[]) {
     model.train(train_loader, val_loader, total_epochs, epoch_size, val_epoch_size);
 
     train_loader.kill();
-    val_loader->kill();
+    if (val_loader.has_value())
+        val_loader->kill();
 
     close();
     return 0;
